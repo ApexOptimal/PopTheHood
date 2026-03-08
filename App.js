@@ -31,6 +31,15 @@ import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import DiagnosticScreen from './src/screens/DiagnosticScreen';
 import WarningLightsScreen from './src/screens/WarningLightsScreen';
 
+// New onboarding screens
+import QuickAddScreen from './src/screens/onboarding/QuickAddScreen';
+import MaintenanceBaselineScreen from './src/screens/onboarding/MaintenanceBaselineScreen';
+import PersonaSelectScreen from './src/screens/onboarding/PersonaSelectScreen';
+import HealthScoreRevealScreen from './src/screens/onboarding/HealthScoreRevealScreen';
+import { ThemeProvider } from './src/theme';
+import { getVehicleDefaults } from './src/utils/vehicleDefaults';
+import { mapOilChangeAnswer, estimateOilChangeMileage } from './src/utils/healthScore';
+
 // Modals
 import VehicleFormModal from './src/components/VehicleFormModal';
 import MaintenanceFormModal from './src/components/MaintenanceFormModal';
@@ -129,6 +138,12 @@ export default function App() {
   const [shoppingList, setShoppingList] = useState([]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // New onboarding flow state
+  const [onboardingPhase, setOnboardingPhase] = useState(null); // null=loading, 'quickAdd','baseline','persona','reveal','completed'
+  const [onboardingVehicle, setOnboardingVehicle] = useState(null); // partial vehicle being built during onboarding
+  const [onboardingBaseline, setOnboardingBaseline] = useState(null); // baseline answers
+  const [userPersona, setUserPersona] = useState(null);
   
   // Modal states
   const [showVehicleForm, setShowVehicleForm] = useState(false);
@@ -157,21 +172,24 @@ export default function App() {
         const savedInventory = await storage.getAsync('inventory') || [];
         const savedTodos = await storage.getAsync('todos') || [];
         const savedShoppingList = await storage.getAsync('shoppingList') || [];
-        const welcomeCompleted = await storage.getAsync('welcomeCompleted');
         const onboardingCompleted = await storage.getAsync('onboardingCompleted');
-        
+        const savedPhase = await storage.getAsync('onboardingPhase');
+        const savedPersona = await storage.getAsync('userPersona');
+
         setVehicles(savedVehicles);
         setInventory(savedInventory);
         setTodos(savedTodos);
         setShoppingList(savedShoppingList);
-        
-        if (!welcomeCompleted) {
-          setShowWelcome(true);
-        } else if (!onboardingCompleted) {
-          setShowOnboarding(true);
-        } else {
-          // Start tracking session if onboarding is already completed
+        if (savedPersona) setUserPersona(savedPersona);
+
+        // Determine onboarding state: backward compat + new flow
+        if (onboardingCompleted || savedPhase === 'completed') {
+          setOnboardingPhase('completed');
           await startSession();
+        } else if (savedPhase) {
+          setOnboardingPhase(savedPhase);
+        } else {
+          setOnboardingPhase('quickAdd');
         }
         
         // Request notification permissions
@@ -1075,41 +1093,136 @@ export default function App() {
     );
   }
 
-  if (showWelcome) {
-    return (
-      <SafeAreaProvider>
-        <WelcomeScreen
-          onGetStarted={async () => {
-            await storage.set('welcomeCompleted', true);
-            setShowWelcome(false);
-            setShowOnboarding(true);
-          }}
-        />
-      </SafeAreaProvider>
-    );
-  }
+  // Helper to advance onboarding phase
+  const advanceToPhase = async (phase) => {
+    await storage.set('onboardingPhase', phase);
+    setOnboardingPhase(phase);
+  };
 
-  if (showOnboarding) {
+  const completeOnboarding = async () => {
+    await storage.set('onboardingPhase', 'completed');
+    await storage.set('onboardingCompleted', true);
+    await recordOnboardingCompletion();
+    await startSession();
+    setOnboardingPhase('completed');
+  };
+
+  // Build and save a vehicle from onboarding data
+  const saveOnboardingVehicle = async (vehicleResult, baseline) => {
+    if (!vehicleResult) return;
+
+    const { vin, decodedData, recalls } = vehicleResult;
+    const defaults = getVehicleDefaults(
+      decodedData.make, decodedData.model, decodedData.year, decodedData.trim
+    );
+
+    const mileage = baseline?.mileage || null;
+    const now = new Date().toISOString();
+
+    // Build initial maintenance records from baseline answers
+    // This gives the oil life calculator an actual mileage to work from
+    const initialRecords = [];
+    if (baseline?.estimatedLastOilChange && baseline.estimatedLastOilChange !== '6plus' && mileage) {
+      const estMileage = estimateOilChangeMileage(baseline.estimatedLastOilChange, mileage);
+      const estDate = mapOilChangeAnswer(baseline.estimatedLastOilChange);
+      if (estMileage !== null && estDate) {
+        initialRecords.push({
+          id: `onboarding-oil-${Date.now()}`,
+          type: 'Oil Change',
+          date: estDate,
+          mileage: String(estMileage),
+          notes: 'Estimated from onboarding',
+          cost: '',
+        });
+      }
+    }
+
+    const newVehicle = {
+      make: decodedData.make || '',
+      model: decodedData.model || '',
+      year: decodedData.year || '',
+      trim: decodedData.trim || '',
+      vin: vin || '',
+      mileage: mileage ? String(mileage) : '',
+      mileageHistory: mileage ? [{ date: now, mileage }] : [],
+      mileageLastUpdated: mileage ? now : null,
+      hasCheckEngineLight: baseline?.hasCheckEngineLight || false,
+      maintenanceRecords: initialRecords,
+      estimatedLastService: {
+        oilChange: baseline?.estimatedLastOilChange
+          ? mapOilChangeAnswer(baseline.estimatedLastOilChange)
+          : null,
+      },
+      recalls: recalls || [],
+      completedRecalls: [],
+      ...(defaults || {}),
+    };
+
+    await addVehicle(newVehicle);
+  };
+
+  // New onboarding flow
+  if (onboardingPhase && onboardingPhase !== 'completed') {
     return (
       <SafeAreaProvider>
-        <OnboardingScreen
-          vehicles={vehicles}
-          inventory={inventory}
-          onAddVehicle={addVehicle}
-          onAddInventoryItem={addInventoryItem}
-          onSkip={async () => {
-            await storage.set('onboardingCompleted', true);
-            await recordOnboardingCompletion();
-            await startSession();
-            setShowOnboarding(false);
-          }}
-          onComplete={async () => {
-            await storage.set('onboardingCompleted', true);
-            await recordOnboardingCompletion();
-            await startSession();
-            setShowOnboarding(false);
-          }}
-        />
+        <ThemeProvider>
+          <StatusBar style="light" />
+          {onboardingPhase === 'quickAdd' && (
+            <QuickAddScreen
+              onVehicleDecoded={(result) => {
+                setOnboardingVehicle(result);
+                advanceToPhase('baseline');
+              }}
+              onSkip={() => {
+                setOnboardingVehicle(null);
+                advanceToPhase('baseline');
+              }}
+            />
+          )}
+          {onboardingPhase === 'baseline' && (
+            <MaintenanceBaselineScreen
+              vehicleData={onboardingVehicle}
+              hasVehicle={!!onboardingVehicle}
+              onContinue={(baseline) => {
+                setOnboardingBaseline(baseline);
+                advanceToPhase('persona');
+              }}
+              onBack={() => advanceToPhase('quickAdd')}
+            />
+          )}
+          {onboardingPhase === 'persona' && (
+            <PersonaSelectScreen
+              onSelect={async (persona) => {
+                setUserPersona(persona);
+                await storage.set('userPersona', persona);
+                advanceToPhase('reveal');
+              }}
+              onBack={() => advanceToPhase('baseline')}
+            />
+          )}
+          {onboardingPhase === 'reveal' && (
+            <HealthScoreRevealScreen
+              vehicleData={onboardingVehicle}
+              baselineData={onboardingBaseline}
+              hasVehicle={!!onboardingVehicle}
+              onEnterGarage={async () => {
+                if (onboardingVehicle) {
+                  await saveOnboardingVehicle(onboardingVehicle, onboardingBaseline);
+                }
+                await completeOnboarding();
+              }}
+              onAddAnother={async () => {
+                if (onboardingVehicle) {
+                  await saveOnboardingVehicle(onboardingVehicle, onboardingBaseline);
+                }
+                setOnboardingVehicle(null);
+                setOnboardingBaseline(null);
+                advanceToPhase('quickAdd');
+              }}
+              onBack={() => advanceToPhase('persona')}
+            />
+          )}
+        </ThemeProvider>
       </SafeAreaProvider>
     );
   }
@@ -1159,12 +1272,24 @@ export default function App() {
     borrowingItem,
     launchReceiptScan,
     setBorrowingItem,
-    restartOnboarding: () => setShowOnboarding(true),
+    restartOnboarding: async () => {
+      await storage.set('onboardingPhase', 'quickAdd');
+      await storage.remove('onboardingCompleted');
+      setOnboardingPhase('quickAdd');
+      setOnboardingVehicle(null);
+      setOnboardingBaseline(null);
+    },
+    userPersona,
+    setUserPersona: async (persona) => {
+      setUserPersona(persona);
+      await storage.set('userPersona', persona);
+    },
     setShowMileageModal,
     setMileageModalVehicle,
   };
 
   return (
+    <ThemeProvider>
     <NavigationContainer>
       <StatusBar style="light" />
       <Tab.Navigator
@@ -1370,6 +1495,7 @@ export default function App() {
         />
       )}
     </NavigationContainer>
+    </ThemeProvider>
   );
 }
 

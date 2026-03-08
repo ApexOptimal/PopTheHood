@@ -12,13 +12,13 @@ const initializeSyncCache = async () => {
   if (syncGetInitialized) return;
   
   try {
-    const keysToLoad = ['vehicles', 'inventory', 'welcomeCompleted', 'onboardingCompleted', 'notificationsEnabled', 'barcodeCache', 'unitSystem', 'onboardingCompletionTime', 'totalUsageTime', 'lastSessionStart', 'paywallShown'];
+    const keysToLoad = ['vehicles', 'inventory', 'welcomeCompleted', 'onboardingCompleted', 'notificationsEnabled', 'barcodeCache', 'unitSystem', 'onboardingCompletionTime', 'totalUsageTime', 'lastSessionStart', 'paywallShown', 'userPersona', 'onboardingPhase'];
     for (const key of keysToLoad) {
       try {
         const item = await AsyncStorage.getItem(key);
         if (item !== null) {
           // Some keys are stored as plain strings/numbers, not JSON
-          if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart') {
+          if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase') {
             syncGetCache[key] = item;
           } else if (key === 'totalUsageTime') {
             const parsed = parseFloat(item);
@@ -87,7 +87,7 @@ export const storage = {
         }
         
         // Some keys are stored as plain strings/numbers, not JSON
-        if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart') {
+        if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase') {
           syncGetCache[key] = item;
           return item;
         }
@@ -125,7 +125,7 @@ export const storage = {
       // Save to AsyncStorage
       // Some keys are stored as plain strings/numbers, not JSON
       let serialized;
-      if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart') {
+      if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase') {
         serialized = String(value);
       } else if (key === 'totalUsageTime') {
         serialized = String(value); // Store as string representation of number

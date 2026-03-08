@@ -5,11 +5,18 @@ import {
   StyleSheet,
   TouchableOpacity,
   Switch,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { storage } from '../utils/storage';
 import { getUnitSystem, setUnitSystem } from '../utils/unitConverter';
 import { hasProEntitlement } from '../utils/revenueCat';
+
+const PERSONA_OPTIONS = [
+  { key: 'daily', label: 'The Daily', icon: 'car-outline', description: 'Fuel economy & reliability' },
+  { key: 'track', label: 'The Track', icon: 'speedometer-outline', description: 'Performance & track data' },
+  { key: 'project', label: 'The Project', icon: 'build-outline', description: 'Mod logs & build lists' },
+];
 
 export default function SettingsScreen({ navigation, appContext }) {
   const [unitSystem, setUnitSystemState] = useState('imperial');
@@ -64,7 +71,7 @@ export default function SettingsScreen({ navigation, appContext }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Measurement System</Text>
         <Text style={styles.sectionDescription}>
@@ -155,6 +162,31 @@ export default function SettingsScreen({ navigation, appContext }) {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Vehicle Focus</Text>
+        <Text style={styles.sectionDescription}>
+          Choose how you primarily use your vehicles
+        </Text>
+        {PERSONA_OPTIONS.map((opt) => (
+          <TouchableOpacity
+            key={opt.key}
+            style={[
+              styles.option,
+              appContext?.userPersona === opt.key && styles.optionActive,
+            ]}
+            onPress={() => appContext?.setUserPersona?.(opt.key)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Ionicons name={opt.icon} size={22} color={appContext?.userPersona === opt.key ? '#ffffff' : '#0066cc'} />
+              <View>
+                <Text style={styles.optionTitle}>{opt.label}</Text>
+                <Text style={styles.optionDescription}>{opt.description}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Setup</Text>
         <TouchableOpacity
           style={styles.actionCard}
@@ -174,7 +206,7 @@ export default function SettingsScreen({ navigation, appContext }) {
           </View>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -182,7 +214,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
+  },
+  contentContainer: {
     padding: 16,
+    paddingBottom: 40,
   },
   section: {
     marginBottom: 32,

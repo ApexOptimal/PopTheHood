@@ -53,10 +53,15 @@ export function calculateOilLife(vehicle) {
       const createdAt = vehicle.createdAt ? new Date(vehicle.createdAt) : new Date();
       const daysSinceCreation = (new Date() - createdAt) / (1000 * 60 * 60 * 24);
       const daysSinceService = (new Date() - lastServiceDateObj) / (1000 * 60 * 60 * 24);
-      
-      if (daysSinceCreation > 0) {
+
+      if (daysSinceCreation > 30) {
+        // Only use creation-based rate if vehicle has been in the system long enough
         const estimatedMilesPerDay = currentMileage / daysSinceCreation;
         lastOilChangeMileage = Math.max(0, currentMileage - (estimatedMilesPerDay * daysSinceService));
+      } else {
+        // For newly added vehicles, use national average (~41 miles/day ≈ 15k/year)
+        const AVG_MILES_PER_DAY = 41;
+        lastOilChangeMileage = Math.max(0, currentMileage - (AVG_MILES_PER_DAY * daysSinceService));
       }
     }
   }
