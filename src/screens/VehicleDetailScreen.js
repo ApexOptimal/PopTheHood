@@ -21,21 +21,23 @@ import { Linking } from 'react-native';
 import { calculateOilLife } from '../utils/oilLife';
 import MileageUpdateModal from '../components/MileageUpdateModal';
 import { addMileageEntry } from '../utils/mileageTracking';
+import { theme } from '../theme';
+import { getNextServiceMileage, SERVICE_INTERVAL_LABELS } from '../utils/serviceIntervals';
 
 // Styles must be defined before components that use them
 const vehicleDetailStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   content: {
-    padding: 16,
+    padding: theme.spacing.lg,
   },
   headerActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: theme.spacing.lg,
     width: '100%',
     minWidth: 0,
   },
@@ -45,10 +47,10 @@ const vehicleDetailStyles = StyleSheet.create({
     gap: 6,
     flexShrink: 0,
     minWidth: 60,
-    paddingRight: 8,
+    paddingRight: theme.spacing.sm,
   },
   backButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '500',
     flexShrink: 0,
@@ -65,7 +67,7 @@ const vehicleDetailStyles = StyleSheet.create({
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
@@ -74,7 +76,7 @@ const vehicleDetailStyles = StyleSheet.create({
     minWidth: 60,
   },
   editButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '500',
     flexShrink: 0,
@@ -83,7 +85,7 @@ const vehicleDetailStyles = StyleSheet.create({
     textAlignVertical: 'center',
   },
   deleteButton: {
-    backgroundColor: '#cc0000',
+    backgroundColor: theme.colors.dangerDark,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -97,7 +99,7 @@ const vehicleDetailStyles = StyleSheet.create({
   noImagePlaceholder: {
     width: '100%',
     height: 250,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -108,7 +110,7 @@ const vehicleDetailStyles = StyleSheet.create({
     right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -120,16 +122,16 @@ const vehicleDetailStyles = StyleSheet.create({
     elevation: 5,
   },
   imageUploadButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   noImageText: {
-    color: '#666',
+    color: theme.colors.textTertiary,
     marginTop: 8,
   },
   infoCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -137,13 +139,13 @@ const vehicleDetailStyles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 16,
   },
   mileageSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     padding: 16,
     borderRadius: 8,
     marginBottom: 16,
@@ -154,21 +156,21 @@ const vehicleDetailStyles = StyleSheet.create({
   },
   mileageLabel: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   mileageValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0066cc',
+    color: theme.colors.textPrimary,
   },
   oilLifeSection: {
     marginTop: 16,
     padding: 16,
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2d5a8a',
+    borderColor: theme.colors.primary,
   },
   oilLifeHeader: {
     flexDirection: 'row',
@@ -181,7 +183,7 @@ const vehicleDetailStyles = StyleSheet.create({
   },
   oilLifeLabel: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   oilLifeValueRow: {
@@ -200,7 +202,7 @@ const vehicleDetailStyles = StyleSheet.create({
   },
   oilLifeMiles: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   oilLifeBarContainer: {
@@ -208,7 +210,7 @@ const vehicleDetailStyles = StyleSheet.create({
   },
   oilLifeBarBackground: {
     height: 12,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 6,
     overflow: 'hidden',
   },
@@ -224,15 +226,15 @@ const vehicleDetailStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   metaLabel: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
   metaValue: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
   metaValueRow: {
@@ -242,22 +244,22 @@ const vehicleDetailStyles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   nicknameBadge: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   nicknameBadgeText: {
     fontSize: 12,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
   buildSheetContainer: {
     marginTop: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     overflow: 'hidden',
   },
   buildSheetHeader: {
@@ -274,7 +276,7 @@ const vehicleDetailStyles = StyleSheet.create({
   buildSheetTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
   },
   buildSheetContent: {
     padding: 12,
@@ -282,24 +284,24 @@ const vehicleDetailStyles = StyleSheet.create({
     gap: 12,
   },
   buildSheetItem: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 6,
     padding: 10,
   },
   buildSheetLabel: {
     fontSize: 12,
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontWeight: '600',
     marginBottom: 4,
     textTransform: 'uppercase',
   },
   buildSheetValue: {
     fontSize: 14,
-    color: '#e0e0e0',
+    color: theme.colors.textSecondary,
     lineHeight: 20,
   },
   notesSection: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -307,12 +309,12 @@ const vehicleDetailStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 12,
   },
   notesText: {
     fontSize: 14,
-    color: '#e0e0e0',
+    color: theme.colors.textSecondary,
     lineHeight: 20,
   },
   maintenanceSection: {
@@ -327,14 +329,14 @@ const vehicleDetailStyles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
   },
   addButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -346,25 +348,25 @@ const vehicleDetailStyles = StyleSheet.create({
   exportButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   exportButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '500',
   },
   text: {
     fontSize: 16,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   specSection: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -379,11 +381,11 @@ const vehicleDetailStyles = StyleSheet.create({
     marginTop: 12,
   },
   intervalItem: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   intervalHeader: {
     flexDirection: 'row',
@@ -394,17 +396,17 @@ const vehicleDetailStyles = StyleSheet.create({
   intervalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     flex: 1,
   },
   overdueBadge: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: theme.colors.dangerLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   overdueBadgeText: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -418,15 +420,15 @@ const vehicleDetailStyles = StyleSheet.create({
   },
   intervalDetailLabel: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
   intervalDetailValue: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
   overdueText: {
-    color: '#ff6b6b',
+    color: theme.colors.dangerLight,
     fontWeight: '600',
   },
   fluidsList: {
@@ -439,19 +441,19 @@ const vehicleDetailStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   fluidLabel: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     flex: 1,
   },
   fluidValue: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
   torqueCategory: {
@@ -460,7 +462,7 @@ const vehicleDetailStyles = StyleSheet.create({
   torqueCategoryTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 12,
   },
   torqueList: {
@@ -472,19 +474,19 @@ const vehicleDetailStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   torqueLabel: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     flex: 1,
   },
   torqueValue: {
     fontSize: 14,
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontWeight: '600',
   },
   expandButton: {
@@ -497,7 +499,7 @@ const vehicleDetailStyles = StyleSheet.create({
   },
   expandButtonText: {
     fontSize: 14,
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontWeight: '600',
   },
   recallsSection: {
@@ -508,11 +510,11 @@ const vehicleDetailStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 12,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsHeaderLeft: {
     flexDirection: 'row',
@@ -525,45 +527,45 @@ const vehicleDetailStyles = StyleSheet.create({
   recallsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     flexShrink: 1,
     minWidth: 0,
   },
   recallsCount: {
     fontSize: 12,
-    color: '#909090',
+    color: theme.colors.textMuted,
     marginLeft: 4,
     flexShrink: 0,
   },
   recallsLoading: {
     padding: 16,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsLoadingText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
   recallsContainer: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     padding: 16,
   },
   recallsWarning: {
     backgroundColor: 'rgba(255, 136, 0, 0.1)',
     borderLeftWidth: 4,
-    borderLeftColor: '#ff8800',
+    borderLeftColor: theme.colors.warning,
     padding: 12,
     marginBottom: 12,
     borderRadius: 4,
   },
   recallsWarningText: {
-    color: '#ffaa44',
+    color: theme.colors.warningMuted,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -573,7 +575,7 @@ const vehicleDetailStyles = StyleSheet.create({
     paddingVertical: 8,
   },
   recallsLinkText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'underline',
@@ -584,7 +586,7 @@ const vehicleDetailStyles = StyleSheet.create({
   recallItem: {
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   recallItemCompleted: {
     opacity: 0.6,
@@ -599,78 +601,78 @@ const vehicleDetailStyles = StyleSheet.create({
     flex: 1,
   },
   recallItemTitle: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
   },
   recallItemTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: '#909090',
+    color: theme.colors.textMuted,
   },
   recallItemComponent: {
-    color: '#ff8800',
+    color: theme.colors.warning,
     fontSize: 13,
     fontWeight: '500',
     marginBottom: 6,
   },
   recallItemComponentCompleted: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     opacity: 0.8,
   },
   recallItemSummary: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     lineHeight: 16,
     marginBottom: 4,
   },
   recallItemSummaryCompleted: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     opacity: 0.7,
   },
   recallItemDate: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     fontSize: 11,
     marginTop: 4,
   },
   recallItemDateCompleted: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     opacity: 0.6,
   },
   recallCompletedLabel: {
-    color: '#00aa00',
+    color: theme.colors.successIndicator,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
   },
   recallsNoRecalls: {
     padding: 16,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsNoRecallsText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
   recallsCollapsedSummary: {
     padding: 12,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsCollapsedText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
   recallsInfoBox: {
     backgroundColor: 'rgba(0, 102, 204, 0.1)',
     borderLeftWidth: 4,
-    borderLeftColor: '#0066cc',
+    borderLeftColor: theme.colors.primary,
     padding: 12,
     marginBottom: 12,
     borderRadius: 4,
@@ -681,7 +683,7 @@ const vehicleDetailStyles = StyleSheet.create({
     gap: 8,
   },
   recallsInfoText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     flex: 1,
@@ -693,7 +695,7 @@ const vehicleDetailStyles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 24,
     width: '85%',
@@ -702,7 +704,7 @@ const vehicleDetailStyles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: theme.colors.textPrimary,
     marginBottom: 20,
   },
   modalOption: {
@@ -714,7 +716,7 @@ const vehicleDetailStyles = StyleSheet.create({
   },
   modalOptionText: {
     fontSize: 16,
-    color: '#fff',
+    color: theme.colors.textPrimary,
     flex: 1,
   },
   modalButtons: {
@@ -731,15 +733,15 @@ const vehicleDetailStyles = StyleSheet.create({
     alignItems: 'center',
   },
   modalButtonCancel: {
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
   },
   modalButtonConfirm: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
   },
   modalButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.textPrimary,
   },
 });
 
@@ -748,96 +750,14 @@ function ServiceIntervalsSection({ vehicle }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const serviceIntervals = vehicle?.serviceIntervals || {};
   const currentMileage = parseInt(vehicle?.mileage) || 0;
-  const estimates = vehicle?.estimatedLastService || {};
-  const maintenanceRecords = vehicle?.maintenanceRecords || [];
-
-  // Calculate next service mileages
-  const getNextServiceMileage = (serviceType, interval) => {
-    if (!interval) return null;
-
-    // "Current on Maintenance" = all factory intervals done up to current mileage; next starts from odometer
-    if (vehicle?.maintenanceHistoryStatus === 'current') {
-      return currentMileage + interval;
-    }
-    
-    const lastService = estimates[serviceType];
-    
-    if (lastService === 'never') {
-      return interval;
-    }
-    
-    if (!lastService) {
-      return currentMileage + interval;
-    }
-    
-    const lastServiceDate = new Date(lastService);
-    const serviceTypeMap = {
-      'oilChange': 'Oil Change',
-      'tireRotation': 'Tire Rotation',
-      'brakeInspection': 'Brake Service',
-      'airFilter': 'Filter Replacement',
-      'cabinFilter': 'Cabin Air Filter',
-      'sparkPlugs': 'Spark Plugs',
-      'transmission': 'Transmission Service',
-      'coolant': 'Coolant Flush',
-      'brakeFluid': 'Brake Fluid Change'
-    };
-    
-    const maintenanceType = serviceTypeMap[serviceType];
-    const serviceRecords = maintenanceRecords.filter(r => {
-      if (!r.type) return false;
-      const recordType = r.type.toLowerCase();
-      if (serviceType === 'airFilter' || serviceType === 'cabinFilter') {
-        return recordType.includes('filter');
-      }
-      if (serviceType === 'coolant' || serviceType === 'brakeFluid') {
-        return recordType.includes(serviceType.toLowerCase().replace('fluid', '')) && recordType.includes('fluid');
-      }
-      return recordType.includes(maintenanceType?.toLowerCase().split(' ')[0]);
-    });
-
-    if (serviceRecords.length > 0) {
-      const sortedRecords = serviceRecords.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        const diffA = Math.abs(dateA - lastServiceDate);
-        const diffB = Math.abs(dateB - lastServiceDate);
-        return diffA - diffB;
-      });
-      
-      if (sortedRecords[0].mileage) {
-        const lastServiceMileage = parseInt(sortedRecords[0].mileage);
-        return lastServiceMileage + interval;
-      }
-    }
-
-    const daysSince = (new Date() - lastServiceDate) / (1000 * 60 * 60 * 24);
-    const createdAt = vehicle?.createdAt ? new Date(vehicle.createdAt) : new Date();
-    const daysSinceCreation = (new Date() - createdAt) / (1000 * 60 * 60 * 24);
-    const estimatedMilesPerDay = daysSinceCreation > 0 ? currentMileage / daysSinceCreation : 0;
-    const lastServiceMileage = Math.max(0, currentMileage - (estimatedMilesPerDay * daysSince));
-    return lastServiceMileage + interval;
-  };
-
-  const intervalLabels = {
-    oilChange: 'Oil Change',
-    tireRotation: 'Tire Rotation',
-    brakeInspection: 'Brake Inspection',
-    airFilter: 'Engine Air Filter',
-    cabinFilter: 'Cabin Air Filter',
-    sparkPlugs: 'Spark Plugs',
-    transmission: 'Transmission Service',
-    coolant: 'Coolant Flush',
-    brakeFluid: 'Brake Fluid Change'
-  };
 
   const intervalsList = Object.keys(serviceIntervals)
     .filter(key => serviceIntervals[key])
     .map(key => ({
       type: key,
-      label: intervalLabels[key] || key,
+      label: SERVICE_INTERVAL_LABELS[key] || key,
       interval: parseInt(serviceIntervals[key]),
-      nextService: getNextServiceMileage(key, parseInt(serviceIntervals[key]))
+      nextService: getNextServiceMileage(vehicle, key, parseInt(serviceIntervals[key]))
     }))
     .sort((a, b) => (a.nextService || 0) - (b.nextService || 0));
 
@@ -856,14 +776,14 @@ function ServiceIntervalsSection({ vehicle }) {
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="calendar" size={20} color="#0066cc" />
+          <Ionicons name="calendar" size={20} color={theme.colors.primary} />
           <Text style={vehicleDetailStyles.sectionTitle}>Service Intervals Timeline</Text>
         </View>
         {hasMore && (
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
-            color="#b0b0b0" 
+            color={theme.colors.textSecondary} 
           />
         )}
       </TouchableOpacity>
@@ -908,7 +828,7 @@ function ServiceIntervalsSection({ vehicle }) {
           <Text style={vehicleDetailStyles.expandButtonText}>
             Show {intervalsList.length - 2} more
           </Text>
-          <Ionicons name="chevron-down" size={16} color="#0066cc" />
+          <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -953,14 +873,14 @@ function RecommendedFluidsSection({ vehicle }) {
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="water" size={20} color="#0066cc" />
+          <Ionicons name="water" size={20} color={theme.colors.primary} />
           <Text style={vehicleDetailStyles.sectionTitle}>Recommended Fluids</Text>
         </View>
         {hasMore && (
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
-            color="#b0b0b0" 
+            color={theme.colors.textSecondary} 
           />
         )}
       </TouchableOpacity>
@@ -984,7 +904,7 @@ function RecommendedFluidsSection({ vehicle }) {
           <Text style={vehicleDetailStyles.expandButtonText}>
             Show {fluidsList.length - 3} more
           </Text>
-          <Ionicons name="chevron-down" size={16} color="#0066cc" />
+          <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -1028,14 +948,14 @@ function TiresWheelsSection({ vehicle }) {
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="disc" size={20} color="#0066cc" />
+          <Ionicons name="disc" size={20} color={theme.colors.primary} />
           <Text style={vehicleDetailStyles.sectionTitle}>Tires & Wheels</Text>
         </View>
         {hasMore && (
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
-            color="#b0b0b0" 
+            color={theme.colors.textSecondary} 
           />
         )}
       </TouchableOpacity>
@@ -1055,7 +975,7 @@ function TiresWheelsSection({ vehicle }) {
           <Text style={vehicleDetailStyles.expandButtonText}>
             Show {tireList.length - 3} more
           </Text>
-          <Ionicons name="chevron-down" size={16} color="#0066cc" />
+          <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -1097,14 +1017,14 @@ function HardwareSection({ vehicle }) {
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="settings" size={20} color="#0066cc" />
+          <Ionicons name="settings" size={20} color={theme.colors.primary} />
           <Text style={vehicleDetailStyles.sectionTitle}>Hardware</Text>
         </View>
         {hasMore && (
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
-            color="#b0b0b0" 
+            color={theme.colors.textSecondary} 
           />
         )}
       </TouchableOpacity>
@@ -1124,7 +1044,7 @@ function HardwareSection({ vehicle }) {
           <Text style={vehicleDetailStyles.expandButtonText}>
             Show {hardwareList.length - 2} more
           </Text>
-          <Ionicons name="chevron-down" size={16} color="#0066cc" />
+          <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -1169,14 +1089,14 @@ function LightingSection({ vehicle }) {
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="bulb" size={20} color="#0066cc" />
+          <Ionicons name="bulb" size={20} color={theme.colors.primary} />
           <Text style={vehicleDetailStyles.sectionTitle}>Lighting</Text>
         </View>
         {hasMore && (
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
-            color="#b0b0b0" 
+            color={theme.colors.textSecondary} 
           />
         )}
       </TouchableOpacity>
@@ -1196,7 +1116,7 @@ function LightingSection({ vehicle }) {
           <Text style={vehicleDetailStyles.expandButtonText}>
             Show {lightingList.length - 3} more
           </Text>
-          <Ionicons name="chevron-down" size={16} color="#0066cc" />
+          <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -1243,14 +1163,14 @@ function PartsSKUsSection({ vehicle }) {
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="list" size={20} color="#0066cc" />
+          <Ionicons name="list" size={20} color={theme.colors.primary} />
           <Text style={vehicleDetailStyles.sectionTitle}>Parts SKUs</Text>
         </View>
         {hasMore && (
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
-            color="#b0b0b0" 
+            color={theme.colors.textSecondary} 
           />
         )}
       </TouchableOpacity>
@@ -1258,7 +1178,7 @@ function PartsSKUsSection({ vehicle }) {
         {displayList.map((part) => (
           <View key={part.key} style={vehicleDetailStyles.fluidItem}>
             <Text style={vehicleDetailStyles.fluidLabel}>{part.label}</Text>
-            <Text style={[vehicleDetailStyles.fluidValue, { fontFamily: 'monospace', fontSize: 13, color: '#4dff4d' }]}>{part.value}</Text>
+            <Text style={[vehicleDetailStyles.fluidValue, { fontFamily: 'monospace', fontSize: 13, color: theme.colors.successBright }]}>{part.value}</Text>
           </View>
         ))}
       </View>
@@ -1270,7 +1190,7 @@ function PartsSKUsSection({ vehicle }) {
           <Text style={vehicleDetailStyles.expandButtonText}>
             Show {partsList.length - 3} more
           </Text>
-          <Ionicons name="chevron-down" size={16} color="#0066cc" />
+          <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -1335,14 +1255,14 @@ function TorqueValuesSection({ vehicle }) {
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="settings" size={20} color="#0066cc" />
+          <Ionicons name="settings" size={20} color={theme.colors.primary} />
           <Text style={vehicleDetailStyles.sectionTitle}>Torque Specifications</Text>
         </View>
         {hasMore && (
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
-            color="#b0b0b0" 
+            color={theme.colors.textSecondary} 
           />
         )}
       </TouchableOpacity>
@@ -1383,7 +1303,7 @@ function TorqueValuesSection({ vehicle }) {
           <Text style={vehicleDetailStyles.expandButtonText}>
             Show {totalItems - 4} more
           </Text>
-          <Ionicons name="chevron-down" size={16} color="#0066cc" />
+          <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -1429,7 +1349,7 @@ function VehicleRecallsSection({ vehicle }) {
         onPress={() => setRecallsExpanded(!recallsExpanded)}
       >
         <View style={vehicleDetailStyles.recallsHeaderLeft}>
-          <Ionicons name="warning" size={20} color="#ff8800" />
+          <Ionicons name="warning" size={20} color={theme.colors.warning} />
           <Text style={vehicleDetailStyles.recallsTitle}>Vehicle Recalls</Text>
           {recalls.length > 0 && (
             <Text style={vehicleDetailStyles.recallsCount}>
@@ -1440,7 +1360,7 @@ function VehicleRecallsSection({ vehicle }) {
         <Ionicons 
           name={recallsExpanded ? "chevron-up" : "chevron-down"} 
           size={20} 
-          color="#b0b0b0" 
+          color={theme.colors.textSecondary} 
         />
       </TouchableOpacity>
       {recallsExpanded && (
@@ -1459,7 +1379,7 @@ function VehicleRecallsSection({ vehicle }) {
               {activeRecallsCount > 0 && (
                 <View style={vehicleDetailStyles.recallsInfoBox}>
                   <View style={vehicleDetailStyles.recallsInfoRow}>
-                    <Ionicons name="information-circle" size={16} color="#0066cc" />
+                    <Ionicons name="information-circle" size={16} color={theme.colors.primary} />
                     <Text style={vehicleDetailStyles.recallsInfoText}>
                       To mark recalls as complete, edit this vehicle and check them off in the recalls section.
                     </Text>
@@ -1601,7 +1521,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
             style={vehicleDetailStyles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
+            <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
             <Text style={vehicleDetailStyles.backButtonText} numberOfLines={1}>Back</Text>
           </TouchableOpacity>
           <View style={vehicleDetailStyles.headerButtons}>
@@ -1612,7 +1532,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                 setShowVehicleForm(true);
               }}
             >
-              <Ionicons name="create" size={18} color="#fff" style={{ marginRight: 2 }} />
+              <Ionicons name="create" size={18} color={theme.colors.textPrimary} style={{ marginRight: 2 }} />
               <Text style={vehicleDetailStyles.editButtonText} numberOfLines={1} ellipsizeMode="clip">Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1635,7 +1555,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                 );
               }}
             >
-              <Ionicons name="trash" size={18} color="#fff" />
+              <Ionicons name="trash" size={18} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1646,7 +1566,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
             <Image source={{ uri: vehicleImage }} style={vehicleDetailStyles.featuredImage} />
           ) : (
             <View style={vehicleDetailStyles.noImagePlaceholder}>
-              <Ionicons name="camera" size={64} color="#666" />
+              <Ionicons name="camera" size={64} color={theme.colors.textTertiary} />
               <Text style={vehicleDetailStyles.noImageText}>No image uploaded</Text>
             </View>
           )}
@@ -1657,7 +1577,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
               setShowVehicleForm(true);
             }}
           >
-            <Ionicons name="camera" size={20} color="#fff" />
+            <Ionicons name="camera" size={20} color={theme.colors.textPrimary} />
             <Text style={vehicleDetailStyles.imageUploadButtonText}>
               {vehicleImage ? 'Edit Photo' : 'Add Photo'}
             </Text>
@@ -1676,14 +1596,14 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
               onPress={() => setShowMileageEdit(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="speedometer" size={32} color="#0066cc" />
+              <Ionicons name="speedometer" size={32} color={theme.colors.primary} />
               <View style={vehicleDetailStyles.mileageContent}>
                 <Text style={vehicleDetailStyles.mileageLabel}>Current Mileage</Text>
                 <Text style={vehicleDetailStyles.mileageValue}>
                   {formatDistanceWithSeparators(vehicle.mileage)}
                 </Text>
               </View>
-              <Ionicons name="pencil" size={20} color="#666" />
+              <Ionicons name="pencil" size={20} color={theme.colors.textTertiary} />
             </TouchableOpacity>
           )}
 
@@ -1712,7 +1632,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                       </Text>
                     )}
                     {oilLife.needsChange && (
-                      <Text style={[vehicleDetailStyles.oilLifeMiles, { color: '#ff4444', fontWeight: '600' }]}>
+                      <Text style={[vehicleDetailStyles.oilLifeMiles, { color: theme.colors.danger, fontWeight: '600' }]}>
                         Oil change needed now
                       </Text>
                     )}
@@ -1785,7 +1705,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                   activeOpacity={0.7}
                 >
                   <View style={vehicleDetailStyles.buildSheetHeaderLeft}>
-                    <Ionicons name="construct" size={20} color="#0066cc" />
+                    <Ionicons name="construct" size={20} color={theme.colors.primary} />
                     <Text style={vehicleDetailStyles.buildSheetTitle}>
                       {vehicle.model || 'Vehicle'} Build Sheet
                     </Text>
@@ -1793,7 +1713,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                   <Ionicons 
                     name={showBuildSheet ? "chevron-up" : "chevron-down"} 
                     size={20} 
-                    color="#0066cc" 
+                    color={theme.colors.primary} 
                   />
                 </TouchableOpacity>
 
@@ -1907,7 +1827,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                 setShowMaintenanceForm(true);
               }}
             >
-              <Ionicons name="add" size={20} color="#fff" />
+              <Ionicons name="add" size={20} color={theme.colors.textPrimary} />
               <Text style={vehicleDetailStyles.addButtonText}>Add Maintenance</Text>
             </TouchableOpacity>
           </View>
@@ -1926,7 +1846,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                   }
                 }}
               >
-                <Ionicons name="document-text" size={18} color="#0066cc" />
+                <Ionicons name="document-text" size={18} color={theme.colors.primary} />
                 <Text style={vehicleDetailStyles.exportButtonText}>Export CSV</Text>
               </TouchableOpacity>
               
@@ -1936,7 +1856,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                   setShowPDFExportModal(true);
                 }}
               >
-                <Ionicons name="document" size={18} color="#0066cc" />
+                <Ionicons name="document" size={18} color={theme.colors.primary} />
                 <Text style={vehicleDetailStyles.exportButtonText}>Export PDF</Text>
               </TouchableOpacity>
               
@@ -1956,8 +1876,8 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                       <Switch
                         value={includeBuildSheet}
                         onValueChange={setIncludeBuildSheet}
-                        trackColor={{ false: '#767577', true: '#0066cc' }}
-                        thumbColor={includeBuildSheet ? '#fff' : '#f4f3f4'}
+                        trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                        thumbColor={includeBuildSheet ? theme.colors.textPrimary : theme.colors.textSecondary}
                       />
                     </View>
                     
@@ -1980,7 +1900,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                   }
                 }}
               >
-                        <Text style={[vehicleDetailStyles.modalButtonText, { color: '#fff' }]}>Export</Text>
+                        <Text style={[vehicleDetailStyles.modalButtonText, { color: theme.colors.textPrimary }]}>Export</Text>
               </TouchableOpacity>
                     </View>
                   </View>

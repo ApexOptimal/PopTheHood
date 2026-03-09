@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { theme } from '../theme';
 import {
   View,
   Text,
@@ -56,14 +57,14 @@ export default function MaintenanceRecord({ vehicle, onAdd, onEdit, onDelete }) 
               onPress={() => onEdit(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="create" size={24} color="#0066cc" />
+              <Ionicons name="create" size={24} color={theme.colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.actionButton}
               onPress={() => handleDelete(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="trash" size={24} color="#ff4444" />
+              <Ionicons name="trash" size={24} color={theme.colors.danger} />
             </TouchableOpacity>
           </View>
         </View>
@@ -130,12 +131,12 @@ export default function MaintenanceRecord({ vehicle, onAdd, onEdit, onDelete }) 
               <Ionicons 
                 name={item.receipt.type === 'pdf' ? 'document' : 'image'} 
                 size={20} 
-                color="#0066cc" 
+                color={theme.colors.primary} 
               />
               <Text style={styles.receiptButtonText}>
                 {item.receipt.type === 'pdf' ? 'View Receipt PDF' : 'View Receipt'}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#0066cc" />
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
         )}
@@ -149,7 +150,7 @@ export default function MaintenanceRecord({ vehicle, onAdd, onEdit, onDelete }) 
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No maintenance records yet</Text>
           <TouchableOpacity style={styles.addButton} onPress={onAdd}>
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name="add" size={20} color={theme.colors.textPrimary} />
             <Text style={styles.addButtonText}>Add First Record</Text>
           </TouchableOpacity>
         </View>
@@ -176,7 +177,7 @@ export default function MaintenanceRecord({ vehicle, onAdd, onEdit, onDelete }) 
               <TouchableOpacity
                 onPress={() => setReceiptModal({ visible: false, receipt: null })}
               >
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.receiptModalBody}>
@@ -188,7 +189,7 @@ export default function MaintenanceRecord({ vehicle, onAdd, onEdit, onDelete }) 
                 />
               ) : receiptModal.receipt?.type === 'pdf' ? (
                 <View style={styles.receiptModalPdf}>
-                  <Ionicons name="document" size={64} color="#0066cc" />
+                  <Ionicons name="document" size={64} color={theme.colors.primary} />
                   <Text style={styles.receiptModalPdfText}>
                     {receiptModal.receipt.name || 'Receipt.pdf'}
                   </Text>
@@ -224,12 +225,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   recordCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recordHeader: {
     flexDirection: 'row',
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
   recordType: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   recordActions: {
     flexDirection: 'row',
@@ -250,33 +251,33 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
   },
   recordDate: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   recordMileage: {
     fontSize: 12,
-    color: '#0066cc',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   recordDescription: {
     fontSize: 14,
-    color: '#e0e0e0',
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   recordLocation: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   costSection: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   costRow: {
     flexDirection: 'row',
@@ -286,29 +287,29 @@ const styles = StyleSheet.create({
   },
   costLabel: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   costValue: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
     flex: 1,
     textAlign: 'right',
   },
   costBreakdown: {
     fontSize: 11,
-    color: '#888',
+    color: theme.colors.textTertiary,
     fontWeight: '400',
   },
   savingsLabel: {
     fontSize: 14,
-    color: '#4dff4d',
+    color: theme.colors.successBright,
     fontWeight: '600',
   },
   savingsValue: {
     fontSize: 16,
-    color: '#4dff4d',
+    color: theme.colors.successBright,
     fontWeight: '700',
   },
   emptyState: {
@@ -317,20 +318,20 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 16,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
   },
   addButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -338,19 +339,19 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   receiptButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 8,
     padding: 12,
     gap: 8,
   },
   receiptButtonText: {
     flex: 1,
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -364,7 +365,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 500,
     maxHeight: '90%',
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -374,12 +375,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   receiptModalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   receiptModalBody: {
     padding: 16,
@@ -387,7 +388,7 @@ const styles = StyleSheet.create({
   receiptModalImage: {
     width: '100%',
     height: 500,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   receiptModalPdf: {
     alignItems: 'center',
@@ -395,19 +396,19 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   receiptModalPdfText: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     marginTop: 16,
     marginBottom: 24,
   },
   openPdfButton: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   openPdfButtonText: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { formatDistanceWithSeparators } from '../utils/unitConverter';
 import { calculateOilLife } from '../utils/oilLife';
+import { theme } from '../theme';
 
 export default function VehiclesScreen({ navigation, appContext }) {
   const { vehicles, setShowVehicleForm, setEditingVehicle, setShowMaintenanceForm, setSelectedVehicle, deleteVehicle, setShowMileageModal, setMileageModalVehicle } = appContext;
@@ -35,7 +36,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
       const estimatedMilesPerDay = currentMileage / Math.max(1, (new Date() - new Date(vehicle.createdAt || Date.now())) / (1000 * 60 * 60 * 24));
       const lastServiceMileage = Math.max(0, currentMileage - (estimatedMilesPerDay * daysSince));
       const nextServiceMileage = lastServiceMileage + parseInt(interval);
-      
+
       if (nextServiceMileage <= currentMileage) return true;
       if (nextServiceMileage - currentMileage <= parseInt(interval) * 0.1) return true;
     }
@@ -56,14 +57,14 @@ export default function VehiclesScreen({ navigation, appContext }) {
           <Image source={{ uri: vehicleImage }} style={styles.vehicleImage} />
         ) : (
           <View style={styles.vehicleImagePlaceholder}>
-            <Ionicons name="camera" size={32} color="#666" />
+            <Ionicons name="camera" size={32} color={theme.colors.textTertiary} />
             <Text style={styles.noImageText}>No image</Text>
           </View>
         )}
-        
+
         {hasAlerts && (
           <View style={styles.alertBadge}>
-            <Ionicons name="warning" size={16} color="#ff4444" />
+            <Ionicons name="warning" size={16} color={theme.colors.danger} />
             <Text style={styles.alertText}>Service Due</Text>
           </View>
         )}
@@ -91,7 +92,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="speedometer" size={16} color="#0066cc" />
+                  <Ionicons name="speedometer" size={16} color={theme.colors.primary} />
                   <Text style={styles.mileageText}>
                     {formatDistanceWithSeparators(item.mileage)}
                   </Text>
@@ -106,7 +107,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
                   setShowVehicleForm(true);
                 }}
               >
-                <Ionicons name="create" size={18} color="#b0b0b0" />
+                <Ionicons name="create" size={18} color={theme.colors.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
@@ -115,13 +116,13 @@ export default function VehiclesScreen({ navigation, appContext }) {
                   setShowMaintenanceForm(true);
                 }}
               >
-                <Ionicons name="build" size={18} color="#b0b0b0" />
+                <Ionicons name="build" size={18} color={theme.colors.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.dangerButton]}
                 onPress={() => deleteVehicle(item.id)}
               >
-                <Ionicons name="trash" size={18} color="#ff4444" />
+                <Ionicons name="trash" size={18} color={theme.colors.danger} />
               </TouchableOpacity>
             </View>
           </View>
@@ -139,14 +140,14 @@ export default function VehiclesScreen({ navigation, appContext }) {
               </View>
               <View style={styles.oilLifeBarContainer}>
                 <View style={styles.oilLifeBarBackground}>
-                  <View 
+                  <View
                     style={[
-                      styles.oilLifeBarFill, 
-                      { 
+                      styles.oilLifeBarFill,
+                      {
                         width: `${oilLife.percentage}%`,
                         backgroundColor: oilLife.color
                       }
-                    ]} 
+                    ]}
                   />
                 </View>
               </View>
@@ -156,7 +157,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
                 </Text>
               )}
               {oilLife.needsChange && (
-                <Text style={[styles.oilLifeMiles, { color: '#ff4444' }]}>
+                <Text style={[styles.oilLifeMiles, { color: theme.colors.danger }]}>
                   Oil change needed
                 </Text>
               )}
@@ -168,7 +169,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
               style={styles.primaryButton}
               onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
             >
-              <Ionicons name="eye" size={16} color="#fff" />
+              <Ionicons name="eye" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.primaryButtonText}>View Details</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -178,7 +179,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
                 setShowMaintenanceForm(true);
               }}
             >
-              <Ionicons name="calendar" size={16} color="#fff" />
+              <Ionicons name="calendar" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.secondaryButtonText}>Add Maintenance</Text>
             </TouchableOpacity>
             <Text style={styles.maintenanceCount} numberOfLines={1}>
@@ -200,14 +201,14 @@ export default function VehiclesScreen({ navigation, appContext }) {
           style={styles.addButton}
           onPress={() => setShowVehicleForm(true)}
         >
-          <Ionicons name="add" size={24} color="#fff" />
+          <Ionicons name="add" size={24} color={theme.colors.textPrimary} />
           <Text style={styles.addButtonText}>Add Vehicle</Text>
         </TouchableOpacity>
       </View>
 
       {vehicles.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="car" size={64} color="#666" />
+          <Ionicons name="car" size={64} color={theme.colors.textTertiary} />
           <Text style={styles.emptyText}>No vehicles added yet</Text>
           <Text style={styles.emptySubtext}>
             Add your first vehicle to get started!
@@ -228,49 +229,47 @@ export default function VehiclesScreen({ navigation, appContext }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2d2d2d',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h2,
+    color: theme.colors.textPrimary,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 8,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    gap: theme.spacing.sm,
   },
   addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    ...theme.typography.buttonSmall,
+    color: theme.colors.textPrimary,
   },
   list: {
-    padding: 16,
+    padding: theme.spacing.lg,
   },
   vehicleCard: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
-    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   vehicleCardAlert: {
-    borderColor: '#ff4444',
+    borderColor: theme.colors.danger,
     borderWidth: 2,
   },
   vehicleImage: {
@@ -281,39 +280,39 @@ const styles = StyleSheet.create({
   vehicleImagePlaceholder: {
     width: '100%',
     height: 200,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   noImageText: {
-    color: '#666',
-    marginTop: 8,
-    fontSize: 14,
+    color: theme.colors.textTertiary,
+    marginTop: theme.spacing.sm,
+    ...theme.typography.bodySmall,
   },
   alertBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: theme.spacing.md,
+    right: theme.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 68, 68, 0.9)',
-    paddingHorizontal: 12,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.pill,
     gap: 6,
   },
   alertText: {
-    color: '#fff',
-    fontSize: 12,
+    ...theme.typography.caption,
+    color: theme.colors.textPrimary,
     fontWeight: '600',
   },
   vehicleContent: {
-    padding: 16,
+    padding: theme.spacing.lg,
   },
   vehicleHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
     minWidth: 0,
   },
   vehicleInfo: {
@@ -321,55 +320,52 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   vehicleTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
     minWidth: 0,
   },
   vehicleDetails: {
-    fontSize: 14,
-    color: '#b0b0b0',
-    marginBottom: 4,
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
   },
   vehicleVin: {
-    fontSize: 12,
-    color: '#909090',
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
   },
   mileageContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: theme.spacing.sm,
     gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     borderRadius: 6,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     alignSelf: 'flex-start',
   },
   mileageText: {
-    fontSize: 14,
-    color: '#0066cc',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textPrimary,
     fontWeight: '600',
   },
   vehicleActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: theme.spacing.sm,
     flexShrink: 0,
     minWidth: 0,
   },
   actionButton: {
-    padding: 8,
+    padding: theme.spacing.sm,
     borderRadius: 6,
   },
-  dangerButton: {
-    // Styled separately
-  },
+  dangerButton: {},
   vehicleFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
     flexWrap: 'wrap',
     minWidth: 0,
     width: '100%',
@@ -377,65 +373,63 @@ const styles = StyleSheet.create({
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
     gap: 6,
     flexShrink: 0,
     minWidth: 0,
   },
   primaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+    ...theme.typography.buttonSmall,
+    color: theme.colors.textPrimary,
     flexShrink: 0,
     minWidth: 0,
   },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3d3d3d',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: theme.colors.surfaceElevated,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
     gap: 6,
     flexShrink: 0,
     minWidth: 0,
   },
   secondaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+    ...theme.typography.buttonSmall,
+    color: theme.colors.textPrimary,
     flexShrink: 0,
     minWidth: 0,
   },
   maintenanceCount: {
-    fontSize: 12,
-    color: '#909090',
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
     minWidth: 0,
     flexShrink: 1,
   },
   oilLifeContainer: {
-    marginTop: 12,
-    marginBottom: 8,
-    padding: 12,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   oilLifeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
     flexWrap: 'wrap',
   },
   oilLifeLabel: {
-    fontSize: 14,
+    ...theme.typography.bodySmall,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     flexShrink: 0,
   },
   oilLifePercentage: {
@@ -444,18 +438,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   oilLifeStatus: {
-    fontSize: 12,
-    color: '#b0b0b0',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     flexShrink: 0,
     minWidth: 80,
   },
   oilLifeBarContainer: {
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
   },
   oilLifeBarBackground: {
     height: 8,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -464,25 +458,25 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   oilLifeMiles: {
-    fontSize: 12,
-    color: '#909090',
-    marginTop: 4,
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: theme.spacing.xxl,
   },
   emptyText: {
-    fontSize: 18,
-    color: '#ffffff',
-    marginTop: 16,
-    marginBottom: 8,
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
 });

@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { storage } from '../utils/storage';
 import { getUnitSystem, setUnitSystem } from '../utils/unitConverter';
 import { hasProEntitlement } from '../utils/revenueCat';
+import { theme } from '../theme';
 
 const PERSONA_OPTIONS = [
   { key: 'daily', label: 'The Daily', icon: 'car-outline', description: 'Fuel economy & reliability' },
@@ -32,12 +33,12 @@ export default function SettingsScreen({ navigation, appContext }) {
   useEffect(() => {
     loadSettings();
     checkProStatus();
-    
+
     // Check Pro status when screen is focused
     const unsubscribe = navigation?.addListener?.('focus', () => {
       checkProStatus();
     });
-    
+
     return unsubscribe;
   }, [navigation]);
 
@@ -45,7 +46,7 @@ export default function SettingsScreen({ navigation, appContext }) {
     // Wait for cache to initialize if needed
     const currentSystem = getUnitSystem();
     setUnitSystemState(currentSystem);
-    
+
     const enabled = await storage.getAsync('notificationsEnabled') || false;
     setNotificationsEnabled(enabled);
   };
@@ -77,7 +78,7 @@ export default function SettingsScreen({ navigation, appContext }) {
         <Text style={styles.sectionDescription}>
           Choose your preferred measurement system
         </Text>
-        
+
         <TouchableOpacity
           style={[
             styles.option,
@@ -88,7 +89,7 @@ export default function SettingsScreen({ navigation, appContext }) {
           <Text style={styles.optionTitle}>Imperial (US)</Text>
           <Text style={styles.optionDescription}>Miles, Quarts, ft-lb</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[
             styles.option,
@@ -113,8 +114,8 @@ export default function SettingsScreen({ navigation, appContext }) {
           <Switch
             value={notificationsEnabled}
             onValueChange={handleNotificationsToggle}
-            trackColor={{ false: '#4d4d4d', true: '#0066cc' }}
-            thumbColor={notificationsEnabled ? '#ffffff' : '#b0b0b0'}
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor={notificationsEnabled ? theme.colors.textPrimary : theme.colors.textSecondary}
           />
         </View>
       </View>
@@ -140,23 +141,23 @@ export default function SettingsScreen({ navigation, appContext }) {
         >
           <View style={styles.subscriptionContent}>
             <View style={styles.subscriptionHeader}>
-              <Ionicons 
-                name={isPro ? "checkmark-circle" : "star"} 
-                size={24} 
-                color={isPro ? "#4dff4d" : "#0066cc"} 
+              <Ionicons
+                name={isPro ? "checkmark-circle" : "star"}
+                size={24}
+                color={isPro ? theme.colors.successBright : theme.colors.primary}
               />
               <View style={styles.subscriptionText}>
                 <Text style={styles.subscriptionTitle}>
                   {isPro ? 'Pop the Hood Pro' : 'Upgrade to Pro'}
                 </Text>
                 <Text style={styles.subscriptionDescription}>
-                  {isPro 
-                    ? 'You have access to all Pro features' 
+                  {isPro
+                    ? 'You have access to all Pro features'
                     : 'Unlock premium features and support development'}
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#b0b0b0" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </View>
         </TouchableOpacity>
       </View>
@@ -175,8 +176,8 @@ export default function SettingsScreen({ navigation, appContext }) {
             ]}
             onPress={() => appContext?.setUserPersona?.(opt.key)}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Ionicons name={opt.icon} size={22} color={appContext?.userPersona === opt.key ? '#ffffff' : '#0066cc'} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+              <Ionicons name={opt.icon} size={22} color={appContext?.userPersona === opt.key ? theme.colors.textPrimary : theme.colors.primary} />
               <View>
                 <Text style={styles.optionTitle}>{opt.label}</Text>
                 <Text style={styles.optionDescription}>{opt.description}</Text>
@@ -194,7 +195,7 @@ export default function SettingsScreen({ navigation, appContext }) {
         >
           <View style={styles.actionContent}>
             <View style={styles.actionHeader}>
-              <Ionicons name="refresh" size={24} color="#0066cc" />
+              <Ionicons name="refresh" size={24} color={theme.colors.primary} />
               <View style={styles.actionText}>
                 <Text style={styles.actionTitle}>Restart Onboarding</Text>
                 <Text style={styles.actionDescription}>
@@ -202,7 +203,7 @@ export default function SettingsScreen({ navigation, appContext }) {
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#b0b0b0" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </View>
         </TouchableOpacity>
       </View>
@@ -213,76 +214,75 @@ export default function SettingsScreen({ navigation, appContext }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   contentContainer: {
-    padding: 16,
+    padding: theme.spacing.lg,
     paddingBottom: 40,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: theme.spacing.xxl,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 8,
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
   },
   sectionDescription: {
-    fontSize: 14,
-    color: '#b0b0b0',
-    marginBottom: 16,
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
   },
   option: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.sm,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
     borderWidth: 2,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   optionActive: {
-    borderColor: '#0066cc',
-    backgroundColor: '#1a3a5c',
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primaryDark,
   },
   optionTitle: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
   },
   optionDescription: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   toggleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#2d2d2d',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.sm,
+    padding: theme.spacing.lg,
   },
   toggleLabel: {
     flex: 1,
-    marginRight: 16,
+    marginRight: theme.spacing.lg,
   },
   toggleTitle: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
   },
   toggleDescription: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   subscriptionCard: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.sm,
+    padding: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   subscriptionContent: {
     flexDirection: 'row',
@@ -293,27 +293,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: theme.spacing.md,
   },
   subscriptionText: {
     flex: 1,
   },
   subscriptionTitle: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
   },
   subscriptionDescription: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   actionCard: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.sm,
+    padding: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   actionContent: {
     flexDirection: 'row',
@@ -324,19 +324,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: theme.spacing.md,
   },
   actionText: {
     flex: 1,
   },
   actionTitle: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
   },
   actionDescription: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
 });

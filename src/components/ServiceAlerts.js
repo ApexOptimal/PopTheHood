@@ -1,4 +1,5 @@
 import React from 'react';
+import { theme } from '../theme';
 import {
   View,
   Text,
@@ -20,7 +21,7 @@ export default function ServiceAlerts({ vehicle, inventory, onAddMaintenance }) 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -28,11 +29,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   subtext: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
 });

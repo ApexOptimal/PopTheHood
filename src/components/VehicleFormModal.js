@@ -23,6 +23,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 const ANIMATION_DURATION = 375; // 25% slower than default 300ms
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 import * as ImagePicker from 'expo-image-picker';
 import { extractVINFromImage } from '../utils/visionAI';
 import { decodeVIN, cleanVIN, isValidVIN } from '../utils/vinDecoder';
@@ -1382,7 +1383,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
               {isEditing ? 'Edit Vehicle' : 'Add Vehicle'}
             </Text>
             <TouchableOpacity onPress={() => handleAnimatedClose(onCancel)}>
-              <Ionicons name="close" size={24} color="#fff" />
+              <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -1408,12 +1409,12 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   >
                     {vinDecoding ? (
                       <>
-                        <ActivityIndicator size="small" color="#fff" />
+                        <ActivityIndicator size="small" color={theme.colors.textPrimary} />
                         <Text style={styles.vinScanTopButtonText}>Decoding VIN...</Text>
                       </>
                     ) : (
                       <>
-                        <Ionicons name="qr-code-outline" size={24} color="#fff" />
+                        <Ionicons name="qr-code-outline" size={24} color={theme.colors.textPrimary} />
                         <Text style={styles.vinScanTopButtonText}>Scan VIN to Auto-Fill</Text>
                       </>
                     )}
@@ -1433,7 +1434,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 <Text style={[styles.pickerButtonText, !formData.year && styles.pickerButtonPlaceholder]}>
                   {formData.year || 'Select Year...'}
                 </Text>
-                <Ionicons name="chevron-down" size={20} color="#b0b0b0" />
+                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -1450,7 +1451,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 <Text style={[styles.pickerButtonText, !formData.make && styles.pickerButtonPlaceholder]}>
                   {formData.make || 'Select Make...'}
                 </Text>
-                <Ionicons name="chevron-down" size={20} color="#b0b0b0" />
+                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -1468,7 +1469,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   <Text style={[styles.pickerButtonText, !formData.model && styles.pickerButtonPlaceholder]}>
                     {formData.model || 'Select Model...'}
                   </Text>
-                  <Ionicons name="chevron-down" size={20} color="#b0b0b0" />
+                  <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
                 </TouchableOpacity>
               ) : (
                 <View style={[styles.input, styles.disabledInput]}>
@@ -1495,7 +1496,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   <Text style={[styles.pickerButtonText, !formData.trim && styles.pickerButtonPlaceholder]}>
                     {formData.trim || 'Select Trim (Optional)...'}
                   </Text>
-                  <Ionicons name="chevron-down" size={20} color="#b0b0b0" />
+                  <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
                 </TouchableOpacity>
               ) : formData.make && formData.model ? (
                 <View style={[styles.input, styles.disabledInput]}>
@@ -1596,10 +1597,10 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   disabled={vinDecoding}
                 >
                   {vinDecoding ? (
-                    <ActivityIndicator size="small" color="#0066cc" />
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
                   ) : (
                     <>
-                      <Ionicons name="camera" size={20} color="#0066cc" />
+                      <Ionicons name="camera" size={20} color={theme.colors.primary} />
                       <Text style={styles.vinScanButtonText}>Scan</Text>
                     </>
                   )}
@@ -1629,7 +1630,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                       },
                     ]}
                   >
-                    <Ionicons name="car" size={32} color="#0066cc" />
+                    <Ionicons name="car" size={32} color={theme.colors.primary} />
                   </Animated.View>
                   <Text style={styles.decodingText}>Decoding VIN...</Text>
                   <Text style={styles.decodingSubtext}>Please wait while we fetch vehicle details</Text>
@@ -1657,21 +1658,21 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   <Image source={{ uri: vehicleImage }} style={styles.singleImagePreview} />
                   <View style={styles.singleImageActions}>
                     <TouchableOpacity style={styles.replaceImageButton} onPress={showImageOptions}>
-                      <Ionicons name="camera" size={20} color="#0066cc" />
+                      <Ionicons name="camera" size={20} color={theme.colors.primary} />
                       <Text style={styles.replaceImageText}>Replace Photo</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.removeImageButtonSingle}
                       onPress={handleRemoveImage}
                     >
-                      <Ionicons name="trash" size={20} color="#ff4444" />
+                      <Ionicons name="trash" size={20} color={theme.colors.danger} />
                       <Text style={styles.removeImageText}>Remove</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
                 <TouchableOpacity style={styles.imageButton} onPress={showImageOptions}>
-                  <Ionicons name="camera" size={20} color="#0066cc" />
+                  <Ionicons name="camera" size={20} color={theme.colors.primary} />
                   <Text style={styles.imageButtonText}>Add Photo</Text>
                 </TouchableOpacity>
               )}
@@ -1696,14 +1697,14 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   <Ionicons 
                     name={recallsExpanded ? "chevron-up" : "chevron-down"} 
                     size={20} 
-                    color="#b0b0b0" 
+                    color={theme.colors.textSecondary} 
                   />
                 </TouchableOpacity>
                 {recallsExpanded && (
                   <>
                     {loadingRecalls ? (
                       <View style={styles.recallsLoading}>
-                        <ActivityIndicator size="small" color="#0066cc" />
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
                         <Text style={styles.recallsLoadingText}>Checking for recalls...</Text>
                       </View>
                     ) : recalls.length > 0 ? (
@@ -1903,7 +1904,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
               <Ionicons
                 name={showBuildSheet ? 'chevron-up' : 'chevron-down'}
                 size={20}
-                color="#0066cc"
+                color={theme.colors.primary}
               />
             </TouchableOpacity>
 
@@ -2056,7 +2057,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
               <Ionicons
                 name={showAdvanced ? 'chevron-up' : 'chevron-down'}
                 size={20}
-                color="#0066cc"
+                color={theme.colors.primary}
               />
             </TouchableOpacity>
 
@@ -2123,7 +2124,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                         );
                       }}
                     >
-                      <Ionicons name="download-outline" size={20} color="#fff" />
+                      <Ionicons name="download-outline" size={20} color={theme.colors.textPrimary} />
                       <Text style={styles.importSpecsButtonText}>Import Specs from Database</Text>
                     </TouchableOpacity>
                   </View>
@@ -2139,7 +2140,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                       <Ionicons 
                         name={showServiceIntervalInfo ? "information-circle" : "information-circle-outline"} 
                         size={20} 
-                        color="#0066cc" 
+                        color={theme.colors.primary} 
                       />
                     </TouchableOpacity>
                   </View>
@@ -2856,7 +2857,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   {pickerModal.type === 'trim' && 'Select Trim'}
                 </Text>
                 <TouchableOpacity onPress={closePicker}>
-                  <Ionicons name="close" size={24} color="#fff" />
+                  <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
               <FlatList
@@ -2879,7 +2880,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                       <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
                         {label}
                       </Text>
-                      {isSelected && <Ionicons name="checkmark" size={20} color="#0066cc" />}
+                      {isSelected && <Ionicons name="checkmark" size={20} color={theme.colors.primary} />}
                     </TouchableOpacity>
                   );
                 }}
@@ -2904,7 +2905,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 150 : 50,
   },
   modal: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '85%',
@@ -2915,12 +2916,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   keyboardView: {
     flex: 1,
@@ -2949,16 +2950,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     padding: 12,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
   },
   labelHint: {
@@ -2978,24 +2979,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
   },
   nicknameChipSelected: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
   },
   nicknameChipText: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
   nicknameChipTextSelected: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
   nicknameCustomInput: {
     marginTop: 0,
   },
   disabledInput: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderColor: '#3d3d3d',
   },
   disabledText: {
@@ -3018,7 +3019,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -3026,14 +3027,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   importSpecsButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   sectionTitleRow: {
@@ -3047,23 +3048,23 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   infoBox: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 8,
     padding: 12,
     marginTop: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
   },
   infoTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   infoText: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
     lineHeight: 18,
   },
@@ -3072,14 +3073,14 @@ const styles = StyleSheet.create({
   },
   infoBullet: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
     lineHeight: 18,
     paddingLeft: 4,
   },
   sectionDescription: {
     fontSize: 12,
-    color: '#909090',
+    color: theme.colors.textMuted,
     marginBottom: 12,
   },
   advancedToggle: {
@@ -3088,14 +3089,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     marginTop: 12,
   },
   advancedToggleText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -3108,25 +3109,25 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   submitButton: {
     flex: 1,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   submitButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -3134,16 +3135,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     padding: 12,
     minHeight: 50,
   },
   pickerButtonText: {
     fontSize: 16,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     flex: 1,
   },
   pickerButtonPlaceholder: {
@@ -3155,7 +3156,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerModalContent: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
@@ -3167,12 +3168,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   pickerModalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   pickerList: {
     flex: 1,
@@ -3190,30 +3191,30 @@ const styles = StyleSheet.create({
     borderBottomColor: '#3d3d3d',
   },
   pickerItemSelected: {
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
   },
   pickerItemText: {
     fontSize: 16,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     flex: 1,
   },
   pickerItemTextSelected: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontWeight: '600',
   },
   imageButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     padding: 12,
     gap: 8,
   },
   imageButtonText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -3229,9 +3230,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -3239,19 +3240,19 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   vinScanButtonText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   decodingText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
     marginTop: 8,
     textAlign: 'center',
   },
   decodingSubtext: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     marginTop: 4,
     textAlign: 'center',
@@ -3262,10 +3263,10 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 16,
     marginTop: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   carAnimationContainer: {
     marginBottom: 12,
@@ -3277,7 +3278,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
@@ -3289,7 +3290,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   vinScanTopButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -3300,10 +3301,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
     padding: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsHeaderLeft: {
     flexDirection: 'row',
@@ -3314,7 +3315,7 @@ const styles = StyleSheet.create({
   },
   recallsCount: {
     fontSize: 12,
-    color: '#909090',
+    color: theme.colors.textMuted,
     marginLeft: 4,
     flexShrink: 1,
     minWidth: 0, // Allows text to shrink
@@ -3322,7 +3323,7 @@ const styles = StyleSheet.create({
   recallsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     flexShrink: 0, // Don't shrink the title
   },
   recallsLoading: {
@@ -3330,20 +3331,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsLoadingText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   recallsContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     padding: 16,
   },
   recallsWarning: {
@@ -3365,7 +3366,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   recallsLinkText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'underline',
@@ -3373,9 +3374,9 @@ const styles = StyleSheet.create({
   checkAllRecallsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     padding: 12,
     marginTop: 12,
@@ -3383,7 +3384,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   checkAllRecallsText: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -3412,18 +3413,18 @@ const styles = StyleSheet.create({
   },
   recallItemTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: '#909090',
+    color: theme.colors.textMuted,
   },
   recallItemComponentCompleted: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     opacity: 0.8,
   },
   recallItemSummaryCompleted: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     opacity: 0.7,
   },
   recallItemDateCompleted: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     opacity: 0.6,
   },
   recallCompletedLabel: {
@@ -3434,18 +3435,18 @@ const styles = StyleSheet.create({
   },
   recallsCollapsedSummary: {
     padding: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsCollapsedText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
   recallItemTitle: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
@@ -3457,25 +3458,25 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   recallItemSummary: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     lineHeight: 16,
     marginBottom: 4,
   },
   recallItemDate: {
-    color: '#909090',
+    color: theme.colors.textMuted,
     fontSize: 11,
     marginTop: 4,
   },
   recallsNoRecalls: {
     padding: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   recallsNoRecallsText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },

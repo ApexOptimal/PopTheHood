@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { theme } from '../theme';
 import {
   View,
   Text,
@@ -149,7 +150,7 @@ export default function MileageUpdateModal({ vehicle, onUpdate, onSkip }) {
                       value={mileage}
                       onChangeText={setMileage}
                       placeholder="Enter odometer reading"
-                      placeholderTextColor="#666"
+                      placeholderTextColor={theme.colors.textTertiary}
                       keyboardType="numeric"
                     />
                     <View style={styles.buttons}>
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modal: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 24,
     width: '80%',
@@ -211,30 +212,30 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 16,
   },
   currentMileage: {
     fontSize: 14,
-    color: '#0066cc',
+    color: theme.colors.textPrimary,
     marginBottom: 16,
   },
   predictedBlock: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
   },
   predictedLabel: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -242,20 +243,20 @@ const styles = StyleSheet.create({
   predictedValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   predictedHint: {
     fontSize: 13,
-    color: '#888',
+    color: theme.colors.textTertiary,
   },
   input: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     padding: 12,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     marginBottom: 20,
   },
@@ -265,49 +266,49 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   skipButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   adjustButton: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   adjustButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   confirmButton: {
     flex: 1,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   confirmButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   updateButton: {
     flex: 1,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   updateButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

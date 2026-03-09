@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Alert, AppState, LogBox, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Alert, AppState, LogBox, ActivityIndicator, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { scanReceipt } from './src/utils/receiptScanService';
 import { copyToPermanentStorage } from './src/utils/fileStorage';
@@ -36,7 +36,7 @@ import QuickAddScreen from './src/screens/onboarding/QuickAddScreen';
 import MaintenanceBaselineScreen from './src/screens/onboarding/MaintenanceBaselineScreen';
 import PersonaSelectScreen from './src/screens/onboarding/PersonaSelectScreen';
 import HealthScoreRevealScreen from './src/screens/onboarding/HealthScoreRevealScreen';
-import { ThemeProvider } from './src/theme';
+import { ThemeProvider, theme } from './src/theme';
 import { getVehicleDefaults } from './src/utils/vehicleDefaults';
 import { mapOilChangeAnswer, estimateOilChangeMileage } from './src/utils/healthScore';
 
@@ -72,8 +72,8 @@ function VehiclesStack({ appContext }) {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#2d2d2d' },
-        headerTintColor: '#fff',
+        headerStyle: { backgroundColor: theme.colors.surface },
+        headerTintColor: theme.colors.textPrimary,
         headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
@@ -105,8 +105,8 @@ function DiagnosticsStack({ appContext }) {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#2d2d2d' },
-        headerTintColor: '#fff',
+        headerStyle: { backgroundColor: theme.colors.surface },
+        headerTintColor: theme.colors.textPrimary,
         headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
@@ -1294,12 +1294,15 @@ export default function App() {
       <StatusBar style="light" />
       <Tab.Navigator
         screenOptions={{
-          headerStyle: { backgroundColor: '#2d2d2d' },
-          headerTintColor: '#fff',
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTintColor: theme.colors.textPrimary,
           headerTitleStyle: { fontWeight: 'bold' },
-          tabBarStyle: { backgroundColor: '#2d2d2d', borderTopColor: '#4d4d4d' },
-          tabBarActiveTintColor: '#0066cc',
-          tabBarInactiveTintColor: '#b0b0b0',
+          tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border },
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
+          tabBarLabelStyle: {
+            fontSize: Platform.OS === 'android' ? 10 : 12,
+          },
         }}
       >
         <Tab.Screen 
@@ -1478,7 +1481,7 @@ export default function App() {
       {receiptScanLoading && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-only">
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <ActivityIndicator size="large" color="#0066cc" />
+            <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         </View>
       )}
@@ -1502,6 +1505,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
 });

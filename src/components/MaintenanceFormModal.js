@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { theme } from '../theme';
 import {
   View,
   Text,
@@ -19,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { copyToPermanentStorage } from '../utils/fileStorage';
 import { getMaintenanceVerification } from '../utils/maintenanceVerification';
+import { getUpcomingServices } from '../utils/serviceIntervals';
+import { formatDistanceWithSeparators } from '../utils/unitConverter';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const ANIMATION_DURATION = 375; // 25% slower than default 300ms
@@ -88,6 +91,13 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
     diyPartsCost: initialData?.diyPartsCost !== null && initialData?.diyPartsCost !== undefined ? String(initialData.diyPartsCost) : '',
     receipt: initialData?.receipt || null
   });
+
+  // Compute next 2 upcoming services for quick-complete section
+  const upcomingServices = React.useMemo(() => {
+    if (!vehicle || isEditing) return [];
+    return getUpcomingServices(vehicle).slice(0, 2);
+  }, [vehicle, isEditing]);
+  const vehicleMileage = parseInt(vehicle?.mileage) || 0;
 
   const [showVerification, setShowVerification] = useState(false);
   const [verificationData, setVerificationData] = useState(null);
@@ -316,12 +326,12 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
             <View style={styles.headerButtons}>
               {!isEditing && (
                 <TouchableOpacity style={styles.headerAddButton} onPress={handleSubmit}>
-                  <Ionicons name="add-circle" size={20} color="#fff" />
+                  <Ionicons name="add-circle" size={20} color={theme.colors.textPrimary} />
                   <Text style={styles.headerAddButtonText}>Add Maintenance</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={() => handleAnimatedClose(onCancel)}>
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -343,9 +353,66 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
 
             {onScanReceipt && (
               <TouchableOpacity style={styles.scanReceiptButton} onPress={onScanReceipt} activeOpacity={0.8}>
-                <Ionicons name="document-text" size={22} color="#0066cc" />
+                <Ionicons name="document-text" size={22} color={theme.colors.primary} />
                 <Text style={styles.scanReceiptButtonText}>Scan Receipt</Text>
               </TouchableOpacity>
+            )}
+
+            {/* Upcoming Services - Quick Complete */}
+            {upcomingServices.length > 0 && !isEditing && (
+              <View style={styles.upcomingServicesSection}>
+                <Text style={styles.upcomingServicesTitle}>Next Services Due</Text>
+                <View style={styles.upcomingServicesRow}>
+                  {upcomingServices.map((service) => {
+                    const isOverdue = vehicleMileage >= service.nextService;
+                    return (
+                      <TouchableOpacity
+                        key={service.type}
+                        style={[
+                          styles.upcomingServiceCard,
+                          isOverdue && styles.upcomingServiceCardOverdue,
+                        ]}
+                        onPress={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            type: service.maintenanceType,
+                            mileage: String(vehicleMileage),
+                            date: new Date().toISOString().split('T')[0],
+                          }));
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.upcomingServiceName,
+                            isOverdue && styles.upcomingServiceNameOverdue,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {service.label}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.upcomingServiceMileage,
+                            isOverdue && styles.upcomingServiceMileageOverdue,
+                          ]}
+                        >
+                          {formatDistanceWithSeparators(service.nextService)}
+                        </Text>
+                        {isOverdue ? (
+                          <View style={styles.overdueBadge}>
+                            <Text style={styles.overdueBadgeText}>Overdue</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.upcomingServiceRemaining}>
+                            in {formatDistanceWithSeparators(service.nextService - vehicleMileage)}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
             )}
 
             <View style={styles.formGroup}>
@@ -378,7 +445,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 value={formData.date}
                 onChangeText={(text) => setFormData({ ...formData, date: text })}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.colors.textTertiary}
               />
             </View>
 
@@ -389,7 +456,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 value={formData.mileage}
                 onChangeText={(text) => setFormData({ ...formData, mileage: text })}
                 placeholder="Mileage at time of service"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.colors.textTertiary}
                 keyboardType="numeric"
               />
             </View>
@@ -401,7 +468,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 value={formData.description}
                 onChangeText={(text) => setFormData({ ...formData, description: text })}
                 placeholder="Additional details"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.colors.textTertiary}
                 multiline
                 numberOfLines={3}
               />
@@ -414,7 +481,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 value={formData.cost}
                 onChangeText={(text) => setFormData({ ...formData, cost: text })}
                 placeholder="0.00"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.colors.textTertiary}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -426,7 +493,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 value={formData.location}
                 onChangeText={(text) => setFormData({ ...formData, location: text })}
                 placeholder="Where was service performed?"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.colors.textTertiary}
               />
             </View>
 
@@ -435,8 +502,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
               <Switch
                 value={formData.autoDeduct}
                 onValueChange={(value) => setFormData({ ...formData, autoDeduct: value })}
-                trackColor={{ false: '#4d4d4d', true: '#0066cc' }}
-                thumbColor={formData.autoDeduct ? '#fff' : '#b0b0b0'}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={formData.autoDeduct ? theme.colors.textPrimary : theme.colors.textSecondary}
               />
             </View>
 
@@ -445,8 +512,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
               <Switch
                 value={formData.isDIY}
                 onValueChange={(value) => setFormData({ ...formData, isDIY: value })}
-                trackColor={{ false: '#4d4d4d', true: '#0066cc' }}
-                thumbColor={formData.isDIY ? '#fff' : '#b0b0b0'}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={formData.isDIY ? theme.colors.textPrimary : theme.colors.textSecondary}
               />
             </View>
 
@@ -459,7 +526,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                     value={formData.shopPrice}
                     onChangeText={(text) => setFormData({ ...formData, shopPrice: text })}
                     placeholder="What would a shop charge?"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.colors.textTertiary}
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -471,7 +538,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                     value={formData.diyPartsCost}
                     onChangeText={(text) => setFormData({ ...formData, diyPartsCost: text })}
                     placeholder="Cost of parts/materials"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.colors.textTertiary}
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -487,7 +554,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                     <Image source={{ uri: formData.receipt.uri }} style={styles.receiptPreview} />
                   ) : (
                     <View style={styles.receiptFilePreview}>
-                      <Ionicons name="document" size={48} color="#0066cc" />
+                      <Ionicons name="document" size={48} color={theme.colors.primary} />
                       <Text style={styles.receiptFileName} numberOfLines={1}>
                         {formData.receipt.name || 'Receipt.pdf'}
                       </Text>
@@ -497,7 +564,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                     style={styles.removeReceiptButton}
                     onPress={handleRemoveReceipt}
                   >
-                    <Ionicons name="trash" size={20} color="#fff" />
+                    <Ionicons name="trash" size={20} color={theme.colors.textPrimary} />
                     <Text style={styles.removeReceiptText}>Remove</Text>
                   </TouchableOpacity>
                 </View>
@@ -506,7 +573,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                   style={styles.addReceiptButton}
                   onPress={handleSelectReceipt}
                 >
-                  <Ionicons name="receipt" size={20} color="#0066cc" />
+                  <Ionicons name="receipt" size={20} color={theme.colors.primary} />
                   <Text style={styles.addReceiptText}>Add Receipt</Text>
                 </TouchableOpacity>
               )}
@@ -543,7 +610,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
               <View style={styles.verificationHeader}>
                 <Text style={styles.verificationTitle}>Verification Required</Text>
                 <TouchableOpacity onPress={() => setShowVerification(false)}>
-                  <Ionicons name="close" size={24} color="#fff" />
+                  <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
 
@@ -567,7 +634,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                         })}
                       >
                         {verificationAnswers[index] && (
-                          <Ionicons name="checkmark" size={20} color="#fff" />
+                          <Ionicons name="checkmark" size={20} color={theme.colors.textPrimary} />
                         )}
                       </TouchableOpacity>
                     </View>
@@ -626,7 +693,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 150 : 50,
   },
   modal: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '85%',
@@ -638,7 +705,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -648,21 +715,21 @@ const styles = StyleSheet.create({
   headerAddButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
   },
   headerAddButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   keyboardView: {
     flex: 1,
@@ -685,18 +752,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
     backgroundColor: 'rgba(0,102,204,0.1)',
     marginBottom: 16,
   },
   scanReceiptButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
   },
   vehicleInfo: {
     fontSize: 16,
-    color: '#0066cc',
+    color: theme.colors.primary,
     marginBottom: 20,
     fontWeight: '600',
   },
@@ -706,16 +773,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     padding: 12,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
   },
   textArea: {
@@ -729,21 +796,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   typeChipActive: {
-    backgroundColor: '#0066cc',
-    borderColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   typeChipText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   typeChipTextActive: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
   },
   switchGroup: {
@@ -757,29 +824,29 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   submitButton: {
     flex: 1,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   submitButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -787,16 +854,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 2,
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
     borderStyle: 'dashed',
     borderRadius: 8,
     padding: 16,
     gap: 8,
   },
   addReceiptText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -809,20 +876,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
     resizeMode: 'contain',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   receiptFilePreview: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     padding: 24,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   receiptFileName: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
@@ -831,13 +898,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ff4444',
+    backgroundColor: theme.colors.danger,
     borderRadius: 8,
     padding: 12,
     gap: 8,
   },
   removeReceiptText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -849,13 +916,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   verificationModal: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     width: '90%',
     maxWidth: 500,
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   verificationHeader: {
     flexDirection: 'row',
@@ -863,12 +930,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   verificationTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   verificationContent: {
     padding: 20,
@@ -876,17 +943,17 @@ const styles = StyleSheet.create({
   },
   verificationSubtitle: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 20,
     lineHeight: 20,
   },
   verificationQuestion: {
     marginBottom: 20,
     padding: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   verificationQuestionHeader: {
     flexDirection: 'row',
@@ -899,7 +966,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     lineHeight: 22,
   },
   verificationCheckbox: {
@@ -907,15 +974,15 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#4d4d4d',
-    backgroundColor: '#1a1a1a',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   verificationCheckboxChecked: {
-    backgroundColor: '#0066cc',
-    borderColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   verificationSpecContainer: {
     flexDirection: 'row',
@@ -923,36 +990,36 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   verificationSpecLabel: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginRight: 8,
   },
   verificationSpecValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
   },
   verificationNote: {
     fontSize: 12,
-    color: '#909090',
+    color: theme.colors.textMuted,
     fontStyle: 'italic',
     marginTop: 8,
   },
   verificationTorqueSummary: {
     marginTop: 20,
     padding: 16,
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2d5a8a',
+    borderColor: theme.colors.primary,
   },
   verificationTorqueSummaryTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 12,
   },
   verificationTorqueRow: {
@@ -962,42 +1029,105 @@ const styles = StyleSheet.create({
   },
   verificationTorqueLabel: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
   verificationTorqueValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
   },
   verificationFooter: {
     flexDirection: 'row',
     gap: 12,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   verificationCancelButton: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   verificationCancelButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   verificationConfirmButton: {
     flex: 1,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   verificationConfirmButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Upcoming Services styles
+  upcomingServicesSection: {
+    marginBottom: 20,
+  },
+  upcomingServicesTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+  },
+  upcomingServicesRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  upcomingServiceCard: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
+  upcomingServiceCardOverdue: {
+    borderColor: theme.colors.danger,
+    backgroundColor: 'rgba(255, 68, 68, 0.08)',
+  },
+  upcomingServiceName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  upcomingServiceNameOverdue: {
+    color: theme.colors.danger,
+  },
+  upcomingServiceMileage: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    marginBottom: 2,
+  },
+  upcomingServiceMileageOverdue: {
+    color: theme.colors.danger,
+  },
+  overdueBadge: {
+    backgroundColor: theme.colors.danger,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  overdueBadgeText: {
+    color: theme.colors.textPrimary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  upcomingServiceRemaining: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
   },
 });
