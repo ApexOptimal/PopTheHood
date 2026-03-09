@@ -132,3 +132,42 @@ export function getUpcomingServices(vehicle) {
     .filter(item => item.nextService !== null)
     .sort((a, b) => a.nextService - b.nextService);
 }
+
+/**
+ * Build timeline data for each service interval, including last-done mileage
+ * and progress percentage through the current interval.
+ *
+ * @param {object} vehicle - Full vehicle object
+ * @returns {Array<{type, label, interval, lastDone, nextService, progress, isOverdue}>}
+ */
+export function getServiceTimeline(vehicle) {
+  const serviceIntervals = vehicle?.serviceIntervals || {};
+  const currentMileage = parseInt(vehicle?.mileage) || 0;
+
+  return Object.keys(serviceIntervals)
+    .filter(key => serviceIntervals[key])
+    .map(key => {
+      const interval = parseInt(serviceIntervals[key]);
+      const nextService = getNextServiceMileage(vehicle, key, interval);
+      if (nextService === null) return null;
+
+      const lastDone = Math.max(0, nextService - interval);
+      const range = nextService - lastDone;
+      const elapsed = currentMileage - lastDone;
+      const progress = range > 0 ? Math.min(Math.max(elapsed / range, 0), 1.5) : 0;
+      const isOverdue = currentMileage >= nextService;
+
+      return {
+        type: key,
+        label: SERVICE_INTERVAL_LABELS[key] || key,
+        maintenanceType: SERVICE_TYPE_TO_MAINTENANCE_TYPE[key] || key,
+        interval,
+        lastDone,
+        nextService,
+        progress,
+        isOverdue,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.nextService - b.nextService);
+}

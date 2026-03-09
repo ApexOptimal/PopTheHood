@@ -22,7 +22,7 @@ import { calculateOilLife } from '../utils/oilLife';
 import MileageUpdateModal from '../components/MileageUpdateModal';
 import { addMileageEntry } from '../utils/mileageTracking';
 import { theme } from '../theme';
-import { getNextServiceMileage, SERVICE_INTERVAL_LABELS } from '../utils/serviceIntervals';
+import { getNextServiceMileage, SERVICE_INTERVAL_LABELS, getServiceTimeline } from '../utils/serviceIntervals';
 
 // Styles must be defined before components that use them
 const vehicleDetailStyles = StyleSheet.create({
@@ -745,88 +745,304 @@ const vehicleDetailStyles = StyleSheet.create({
   },
 });
 
+const timelineStyles = StyleSheet.create({
+  headerBadge: {
+    backgroundColor: theme.colors.danger,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  headerBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  currentMileageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  currentMileageLabel: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
+  currentMileageValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  timelineContainer: {
+    paddingLeft: 2,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    minHeight: 90,
+  },
+  timelineTrack: {
+    width: 28,
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  timelineConnector: {
+    width: 2,
+    flex: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: 2,
+  },
+  timelineCard: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    borderRadius: 10,
+    padding: 12,
+    marginLeft: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  timelineCardOverdue: {
+    borderColor: theme.colors.danger,
+    borderWidth: 1.5,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    flex: 1,
+  },
+  overduePill: {
+    backgroundColor: theme.colors.danger,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  overduePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    letterSpacing: 0.5,
+  },
+  soonPill: {
+    backgroundColor: theme.colors.warning,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  soonPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.background,
+    letterSpacing: 0.5,
+  },
+  progressContainer: {
+    marginBottom: 6,
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: 3,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  positionMarker: {
+    position: 'absolute',
+    top: -3,
+    width: 4,
+    height: 12,
+    backgroundColor: theme.colors.textPrimary,
+    borderRadius: 2,
+    marginLeft: -2,
+  },
+  mileageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  mileageLabel: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+  },
+  mileageDue: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  statusText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+});
+
 // Service Intervals Timeline Component
 function ServiceIntervalsSection({ vehicle }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const serviceIntervals = vehicle?.serviceIntervals || {};
   const currentMileage = parseInt(vehicle?.mileage) || 0;
+  const timeline = getServiceTimeline(vehicle);
 
-  const intervalsList = Object.keys(serviceIntervals)
-    .filter(key => serviceIntervals[key])
-    .map(key => ({
-      type: key,
-      label: SERVICE_INTERVAL_LABELS[key] || key,
-      interval: parseInt(serviceIntervals[key]),
-      nextService: getNextServiceMileage(vehicle, key, parseInt(serviceIntervals[key]))
-    }))
-    .sort((a, b) => (a.nextService || 0) - (b.nextService || 0));
-
-  if (intervalsList.length === 0) {
+  if (timeline.length === 0) {
     return null;
   }
 
-  const displayList = isExpanded ? intervalsList : intervalsList.slice(0, 2);
-  const hasMore = intervalsList.length > 2;
+  const displayList = isExpanded ? timeline : timeline.slice(0, 3);
+  const hasMore = timeline.length > 3;
+  const overdueCount = timeline.filter(s => s.isOverdue).length;
+
+  const getBarColor = (item) => {
+    if (item.isOverdue) return theme.colors.danger;
+    if (item.progress > 0.85) return theme.colors.warning;
+    return theme.colors.success;
+  };
+
+  const getStatusIcon = (item) => {
+    if (item.isOverdue) return 'alert-circle';
+    if (item.progress > 0.85) return 'warning';
+    return 'checkmark-circle';
+  };
 
   return (
     <View style={vehicleDetailStyles.specSection}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={vehicleDetailStyles.sectionHeader}
         onPress={() => setIsExpanded(!isExpanded)}
         activeOpacity={0.7}
       >
         <View style={vehicleDetailStyles.sectionTitleRow}>
-          <Ionicons name="calendar" size={20} color={theme.colors.primary} />
-          <Text style={vehicleDetailStyles.sectionTitle}>Service Intervals Timeline</Text>
+          <Ionicons name="analytics" size={20} color={theme.colors.primary} />
+          <Text style={vehicleDetailStyles.sectionTitle}>Service Timeline</Text>
+          {overdueCount > 0 && (
+            <View style={timelineStyles.headerBadge}>
+              <Text style={timelineStyles.headerBadgeText}>{overdueCount} overdue</Text>
+            </View>
+          )}
         </View>
         {hasMore && (
-          <Ionicons 
-            name={isExpanded ? "chevron-up" : "chevron-down"} 
-            size={20} 
-            color={theme.colors.textSecondary} 
+          <Ionicons
+            name={isExpanded ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={theme.colors.textSecondary}
           />
         )}
       </TouchableOpacity>
-      <View style={vehicleDetailStyles.intervalsList}>
-        {displayList.map((item) => {
-          const isOverdue = item.nextService && currentMileage >= item.nextService;
+
+      {/* Current mileage indicator */}
+      <View style={timelineStyles.currentMileageRow}>
+        <Ionicons name="speedometer" size={14} color={theme.colors.primary} />
+        <Text style={timelineStyles.currentMileageLabel}>Current:</Text>
+        <Text style={timelineStyles.currentMileageValue}>
+          {formatDistanceWithSeparators(currentMileage)}
+        </Text>
+      </View>
+
+      {/* Timeline items */}
+      <View style={timelineStyles.timelineContainer}>
+        {displayList.map((item, index) => {
+          const barColor = getBarColor(item);
+          const statusIcon = getStatusIcon(item);
+          const clampedProgress = Math.min(item.progress, 1);
+          const milesRemaining = item.nextService - currentMileage;
+          const isLast = index === displayList.length - 1;
+
           return (
-            <View key={item.type} style={vehicleDetailStyles.intervalItem}>
-              <View style={vehicleDetailStyles.intervalHeader}>
-                <Text style={vehicleDetailStyles.intervalLabel}>{item.label}</Text>
-                {isOverdue && (
-                  <View style={vehicleDetailStyles.overdueBadge}>
-                    <Text style={vehicleDetailStyles.overdueBadgeText}>Overdue</Text>
-                  </View>
-                )}
+            <View key={item.type} style={timelineStyles.timelineItem}>
+              {/* Left: vertical connector line + dot */}
+              <View style={timelineStyles.timelineTrack}>
+                <View style={[timelineStyles.timelineDot, { backgroundColor: barColor }]}>
+                  <Ionicons name={statusIcon} size={12} color={theme.colors.textPrimary} />
+                </View>
+                {!isLast && <View style={timelineStyles.timelineConnector} />}
               </View>
-              <View style={vehicleDetailStyles.intervalDetails}>
-                <View style={vehicleDetailStyles.intervalDetailRow}>
-                  <Text style={vehicleDetailStyles.intervalDetailLabel}>Interval:</Text>
-                  <Text style={vehicleDetailStyles.intervalDetailValue}>
-                    Every {formatDistanceWithSeparators(item.interval)}
+
+              {/* Right: service card */}
+              <View style={[
+                timelineStyles.timelineCard,
+                item.isOverdue && timelineStyles.timelineCardOverdue,
+              ]}>
+                <View style={timelineStyles.cardHeader}>
+                  <Text style={timelineStyles.cardTitle}>{item.label}</Text>
+                  {item.isOverdue ? (
+                    <View style={timelineStyles.overduePill}>
+                      <Text style={timelineStyles.overduePillText}>OVERDUE</Text>
+                    </View>
+                  ) : item.progress > 0.85 ? (
+                    <View style={timelineStyles.soonPill}>
+                      <Text style={timelineStyles.soonPillText}>DUE SOON</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Progress bar */}
+                <View style={timelineStyles.progressContainer}>
+                  <View style={timelineStyles.progressBarBg}>
+                    <View style={[
+                      timelineStyles.progressBarFill,
+                      { width: `${clampedProgress * 100}%`, backgroundColor: barColor },
+                    ]} />
+                    {/* Current position marker */}
+                    {clampedProgress > 0.05 && clampedProgress < 0.95 && (
+                      <View style={[
+                        timelineStyles.positionMarker,
+                        { left: `${clampedProgress * 100}%` },
+                      ]} />
+                    )}
+                  </View>
+                </View>
+
+                {/* Mileage labels under progress bar */}
+                <View style={timelineStyles.mileageRow}>
+                  <Text style={timelineStyles.mileageLabel}>
+                    {formatDistanceWithSeparators(item.lastDone)}
+                  </Text>
+                  <Text style={[
+                    timelineStyles.mileageDue,
+                    item.isOverdue && { color: theme.colors.danger },
+                  ]}>
+                    {formatDistanceWithSeparators(item.nextService)}
                   </Text>
                 </View>
-                {item.nextService && (
-                  <View style={vehicleDetailStyles.intervalDetailRow}>
-                    <Text style={vehicleDetailStyles.intervalDetailLabel}>Next Service:</Text>
-                    <Text style={[vehicleDetailStyles.intervalDetailValue, isOverdue && vehicleDetailStyles.overdueText]}>
-                      {formatDistanceWithSeparators(item.nextService)}
-                    </Text>
-                  </View>
-                )}
+
+                {/* Status text */}
+                <Text style={[
+                  timelineStyles.statusText,
+                  item.isOverdue && { color: theme.colors.dangerLight },
+                ]}>
+                  {item.isOverdue
+                    ? `${formatDistanceWithSeparators(Math.abs(milesRemaining))} past due`
+                    : `${formatDistanceWithSeparators(milesRemaining)} remaining`}
+                  {' · Every '}
+                  {formatDistanceWithSeparators(item.interval)}
+                </Text>
               </View>
             </View>
           );
         })}
       </View>
+
       {hasMore && !isExpanded && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={vehicleDetailStyles.expandButton}
           onPress={() => setIsExpanded(true)}
         >
           <Text style={vehicleDetailStyles.expandButtonText}>
-            Show {intervalsList.length - 2} more
+            Show {timeline.length - 3} more
           </Text>
           <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
