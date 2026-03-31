@@ -19,19 +19,45 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { copyToPermanentStorage } from '../utils/fileStorage';
+import { resizeForReceipt } from '../utils/imageResize';
 import { getMaintenanceVerification } from '../utils/maintenanceVerification';
 import { getUpcomingServices } from '../utils/serviceIntervals';
 import { formatDistanceWithSeparators } from '../utils/unitConverter';
+import logger from '../utils/logger';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const ANIMATION_DURATION = 375; // 25% slower than default 300ms
 
 export default function MaintenanceFormModal({ vehicle, initialData, isEditing, onSubmit, onCancel, onScanReceipt, receiptPrefill }) {
-  // Animation state
+  // All hooks must be called before any conditional returns
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  
-  // When receipt scan prefill arrives (e.g. scan from inside this form), merge into form data
+
+  const [formData, setFormData] = useState({
+    type: initialData?.type || '',
+    date: initialData?.date || new Date().toISOString().split('T')[0],
+    description: initialData?.description || '',
+    cost: initialData?.cost !== null && initialData?.cost !== undefined ? String(initialData.cost) : '',
+    mileage: initialData?.mileage !== null && initialData?.mileage !== undefined ? String(Math.round(parseFloat(initialData.mileage))) : '',
+    location: initialData?.location || '',
+    autoDeduct: initialData?.autoDeduct !== undefined ? initialData.autoDeduct : true,
+    isDIY: initialData?.isDIY === true,
+    shopPrice: initialData?.shopPrice !== null && initialData?.shopPrice !== undefined ? String(initialData.shopPrice) : '',
+    diyPartsCost: initialData?.diyPartsCost !== null && initialData?.diyPartsCost !== undefined ? String(initialData.diyPartsCost) : '',
+    receipt: initialData?.receipt || null
+  });
+
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationData, setVerificationData] = useState(null);
+  const [verificationAnswers, setVerificationAnswers] = useState({});
+
+  const upcomingServices = React.useMemo(() => {
+    if (!vehicle || isEditing) return [];
+    return getUpcomingServices(vehicle).slice(0, 2);
+  }, [vehicle, isEditing]);
+  const vehicleMileage = parseInt(vehicle?.mileage, 10) || 0;
+
+  // When receipt scan prefill arrives, merge into form data
   useEffect(() => {
     if (!receiptPrefill) return;
     setFormData(prev => ({
@@ -58,7 +84,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
       }),
     ]).start();
   }, []);
-  
+
   const handleAnimatedClose = (callback) => {
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -75,33 +101,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
       if (callback) callback();
     });
   };
-  
+
   if (!vehicle) return null;
-
-  const [formData, setFormData] = useState({
-    type: initialData?.type || '',
-    date: initialData?.date || new Date().toISOString().split('T')[0],
-    description: initialData?.description || '',
-    cost: initialData?.cost !== null && initialData?.cost !== undefined ? String(initialData.cost) : '',
-    mileage: initialData?.mileage !== null && initialData?.mileage !== undefined ? String(Math.round(parseFloat(initialData.mileage))) : '',
-    location: initialData?.location || '',
-    autoDeduct: initialData?.autoDeduct !== undefined ? initialData.autoDeduct : true,
-    isDIY: initialData?.isDIY === true,
-    shopPrice: initialData?.shopPrice !== null && initialData?.shopPrice !== undefined ? String(initialData.shopPrice) : '',
-    diyPartsCost: initialData?.diyPartsCost !== null && initialData?.diyPartsCost !== undefined ? String(initialData.diyPartsCost) : '',
-    receipt: initialData?.receipt || null
-  });
-
-  // Compute next 2 upcoming services for quick-complete section
-  const upcomingServices = React.useMemo(() => {
-    if (!vehicle || isEditing) return [];
-    return getUpcomingServices(vehicle).slice(0, 2);
-  }, [vehicle, isEditing]);
-  const vehicleMileage = parseInt(vehicle?.mileage) || 0;
-
-  const [showVerification, setShowVerification] = useState(false);
-  const [verificationData, setVerificationData] = useState(null);
-  const [verificationAnswers, setVerificationAnswers] = useState({});
 
   const maintenanceTypes = [
     'Oil Change',
@@ -125,7 +126,25 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
       Alert.alert('Error', 'Please select a maintenance type');
       return;
     }
-    
+
+    // Validate mileage
+    if (formData.mileage !== '' && formData.mileage !== null && formData.mileage !== undefined) {
+      const mileageVal = parseInt(String(formData.mileage), 10);
+      if (isNaN(mileageVal) || mileageVal <= 0) {
+        Alert.alert('Invalid Mileage', 'Mileage must be a positive number.');
+        return;
+      }
+    }
+
+    // Validate date
+    if (formData.date) {
+      const dateObj = new Date(formData.date);
+      if (isNaN(dateObj.getTime())) {
+        Alert.alert('Invalid Date', 'Please enter a valid date in YYYY-MM-DD format.');
+        return;
+      }
+    }
+
     // Check if verification is needed (only for new maintenance, not editing)
     if (!isEditing) {
       const verification = getMaintenanceVerification(vehicle, formData.type);
@@ -222,15 +241,12 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
 
       if (!result.canceled && result.assets && result.assets[0]) {
         // Copy to permanent storage
-        const permanentUri = await copyToPermanentStorage(
-          result.assets[0].uri,
-          'receipts'
-        );
-        
+        const permanentUri = await resizeForReceipt(result.assets[0].uri);
+
         setFormData({ ...formData, receipt: { uri: permanentUri, type: 'image' } });
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      logger.error('Error taking photo:', error);
       Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
@@ -245,15 +261,12 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
 
       if (!result.canceled && result.assets && result.assets[0]) {
         // Copy to permanent storage
-        const permanentUri = await copyToPermanentStorage(
-          result.assets[0].uri,
-          'receipts'
-        );
-        
+        const permanentUri = await resizeForReceipt(result.assets[0].uri);
+
         setFormData({ ...formData, receipt: { uri: permanentUri, type: 'image' } });
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      logger.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to select image. Please try again.');
     }
   };
@@ -270,12 +283,13 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
         const fileType = result.assets[0].mimeType?.includes('pdf') ? 'pdf' : 'image';
         
         // Copy to permanent storage
-        const filename = result.assets[0].name || `receipt_${Date.now()}.${fileType === 'pdf' ? 'pdf' : 'jpg'}`;
-        const permanentUri = await copyToPermanentStorage(
-          result.assets[0].uri,
-          'receipts',
-          filename
-        );
+        let permanentUri;
+        if (fileType === 'pdf') {
+          const filename = result.assets[0].name || `receipt_${Date.now()}.pdf`;
+          permanentUri = await copyToPermanentStorage(result.assets[0].uri, 'receipts', filename);
+        } else {
+          permanentUri = await resizeForReceipt(result.assets[0].uri);
+        }
         
         setFormData({ 
           ...formData, 
@@ -287,7 +301,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
         });
       }
     } catch (error) {
-      console.error('Error picking document:', error);
+      logger.error('Error picking document:', error);
       Alert.alert('Error', 'Failed to select document. Please try again.');
     }
   };
@@ -325,12 +339,21 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
             </Text>
             <View style={styles.headerButtons}>
               {!isEditing && (
-                <TouchableOpacity style={styles.headerAddButton} onPress={handleSubmit}>
+                <TouchableOpacity
+                  style={styles.headerAddButton}
+                  onPress={handleSubmit}
+                  accessibilityLabel="Add maintenance"
+                  accessibilityRole="button"
+                >
                   <Ionicons name="add-circle" size={20} color={theme.colors.textPrimary} />
                   <Text style={styles.headerAddButtonText}>Add Maintenance</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => handleAnimatedClose(onCancel)}>
+              <TouchableOpacity
+                onPress={() => handleAnimatedClose(onCancel)}
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
               </TouchableOpacity>
             </View>
@@ -341,18 +364,25 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
             style={styles.keyboardView}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
-            <ScrollView 
+            <ScrollView
               style={styles.content}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               showsVerticalScrollIndicator={true}
             >
             <Text style={styles.vehicleInfo}>
-              {vehicle.year} {vehicle.make} {vehicle.model}
+              {vehicle?.year || ''} {vehicle?.make || ''} {vehicle?.model || ''}
             </Text>
 
             {onScanReceipt && (
-              <TouchableOpacity style={styles.scanReceiptButton} onPress={onScanReceipt} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.scanReceiptButton}
+                onPress={onScanReceipt}
+                activeOpacity={0.8}
+                accessibilityLabel="Scan receipt"
+                accessibilityRole="button"
+              >
                 <Ionicons name="document-text" size={22} color={theme.colors.primary} />
                 <Text style={styles.scanReceiptButtonText}>Scan Receipt</Text>
               </TouchableOpacity>
@@ -372,6 +402,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                           styles.upcomingServiceCard,
                           isOverdue && styles.upcomingServiceCardOverdue,
                         ]}
+                        accessibilityLabel={`Complete ${service.label} service`}
+                        accessibilityRole="button"
                         onPress={() => {
                           setFormData(prev => ({
                             ...prev,
@@ -426,6 +458,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                       formData.type === type && styles.typeChipActive
                     ]}
                     onPress={() => setFormData({ ...formData, type })}
+                    accessibilityLabel={`Select maintenance type ${type}`}
+                    accessibilityRole="button"
                   >
                     <Text style={[
                       styles.typeChipText,
@@ -446,6 +480,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 onChangeText={(text) => setFormData({ ...formData, date: text })}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={theme.colors.textTertiary}
+                accessibilityLabel="Date"
               />
             </View>
 
@@ -458,6 +493,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 placeholder="Mileage at time of service"
                 placeholderTextColor={theme.colors.textTertiary}
                 keyboardType="numeric"
+                accessibilityLabel="Mileage"
               />
             </View>
 
@@ -471,6 +507,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 placeholderTextColor={theme.colors.textTertiary}
                 multiline
                 numberOfLines={3}
+                accessibilityLabel="Description"
               />
             </View>
 
@@ -483,6 +520,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 placeholder="0.00"
                 placeholderTextColor={theme.colors.textTertiary}
                 keyboardType="decimal-pad"
+                accessibilityLabel="Cost"
               />
             </View>
 
@@ -494,6 +532,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 onChangeText={(text) => setFormData({ ...formData, location: text })}
                 placeholder="Where was service performed?"
                 placeholderTextColor={theme.colors.textTertiary}
+                accessibilityLabel="Location"
               />
             </View>
 
@@ -502,6 +541,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
               <Switch
                 value={formData.autoDeduct}
                 onValueChange={(value) => setFormData({ ...formData, autoDeduct: value })}
+                accessibilityLabel="Automatically deduct consumables"
                 trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                 thumbColor={formData.autoDeduct ? theme.colors.textPrimary : theme.colors.textSecondary}
               />
@@ -512,6 +552,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
               <Switch
                 value={formData.isDIY}
                 onValueChange={(value) => setFormData({ ...formData, isDIY: value })}
+                accessibilityLabel="DIY Service"
                 trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                 thumbColor={formData.isDIY ? theme.colors.textPrimary : theme.colors.textSecondary}
               />
@@ -526,6 +567,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                     value={formData.shopPrice}
                     onChangeText={(text) => setFormData({ ...formData, shopPrice: text })}
                     placeholder="What would a shop charge?"
+                    accessibilityLabel="Shop Price"
                     placeholderTextColor={theme.colors.textTertiary}
                     keyboardType="decimal-pad"
                   />
@@ -538,6 +580,7 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                     value={formData.diyPartsCost}
                     onChangeText={(text) => setFormData({ ...formData, diyPartsCost: text })}
                     placeholder="Cost of parts/materials"
+                    accessibilityLabel="DIY Parts Cost"
                     placeholderTextColor={theme.colors.textTertiary}
                     keyboardType="decimal-pad"
                   />
@@ -563,6 +606,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                   <TouchableOpacity
                     style={styles.removeReceiptButton}
                     onPress={handleRemoveReceipt}
+                    accessibilityLabel="Remove receipt"
+                    accessibilityRole="button"
                   >
                     <Ionicons name="trash" size={20} color={theme.colors.textPrimary} />
                     <Text style={styles.removeReceiptText}>Remove</Text>
@@ -572,6 +617,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 <TouchableOpacity
                   style={styles.addReceiptButton}
                   onPress={handleSelectReceipt}
+                  accessibilityLabel="Add receipt"
+                  accessibilityRole="button"
                 >
                   <Ionicons name="receipt" size={20} color={theme.colors.primary} />
                   <Text style={styles.addReceiptText}>Add Receipt</Text>
@@ -582,10 +629,20 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
           </KeyboardAvoidingView>
 
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={onCancel}
+              accessibilityLabel="Cancel"
+              accessibilityRole="button"
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmit}
+              accessibilityLabel={isEditing ? 'Update maintenance' : 'Add maintenance'}
+              accessibilityRole="button"
+            >
               <Text style={styles.submitButtonText}>
                 {isEditing ? 'Update' : 'Add'} Maintenance
               </Text>
@@ -609,7 +666,11 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
             <View style={styles.verificationModal}>
               <View style={styles.verificationHeader}>
                 <Text style={styles.verificationTitle}>Verification Required</Text>
-                <TouchableOpacity onPress={() => setShowVerification(false)}>
+                <TouchableOpacity
+                  onPress={() => setShowVerification(false)}
+                  accessibilityLabel="Close verification"
+                  accessibilityRole="button"
+                >
                   <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
@@ -628,6 +689,8 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                           styles.verificationCheckbox,
                           verificationAnswers[index] && styles.verificationCheckboxChecked
                         ]}
+                        accessibilityLabel={`Confirm ${question.question}`}
+                        accessibilityRole="checkbox"
                         onPress={() => setVerificationAnswers({
                           ...verificationAnswers,
                           [index]: !verificationAnswers[index]
@@ -667,12 +730,16 @@ export default function MaintenanceFormModal({ vehicle, initialData, isEditing, 
                 <TouchableOpacity
                   style={styles.verificationCancelButton}
                   onPress={() => setShowVerification(false)}
+                  accessibilityLabel="Cancel"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.verificationCancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.verificationConfirmButton}
                   onPress={handleVerificationConfirm}
+                  accessibilityLabel="Confirm and submit"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.verificationConfirmButtonText}>Confirm & Submit</Text>
                 </TouchableOpacity>

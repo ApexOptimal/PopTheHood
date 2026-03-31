@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 export default function SavingsScreen({ appContext }) {
   const { vehicles } = appContext || {};
@@ -219,6 +220,9 @@ export default function SavingsScreen({ appContext }) {
                     activeOpacity={0.7}
                     onPress={() => toggleCostVehicle(vehicleId)}
                     style={styles.costHeaderTouchable}
+                    accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.vehicle.year || ''} ${item.vehicle.make || ''} ${item.vehicle.model || ''} costs`}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: isExpanded }}
                   >
                     <View style={styles.costHeader}>
                       <View style={styles.vehicleInfo}>
@@ -331,6 +335,9 @@ export default function SavingsScreen({ appContext }) {
                 activeOpacity={0.7}
                 onPress={() => toggleVehicle(vehicleId)}
                 style={styles.vehicleHeaderTouchable}
+                accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.vehicle.year || ''} ${item.vehicle.make || ''} ${item.vehicle.model || ''} savings`}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isExpanded }}
               >
                 <View style={styles.vehicleHeader}>
                   <View style={styles.vehicleInfo}>
@@ -431,14 +438,14 @@ export default function SavingsScreen({ appContext }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
   },
   grandTotalCard: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     borderRadius: 16,
     padding: 24,
     marginBottom: 24,
@@ -452,7 +459,7 @@ const styles = StyleSheet.create({
   grandTotalLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     opacity: 0.9,
     letterSpacing: 1,
     marginBottom: 8,
@@ -461,7 +468,7 @@ const styles = StyleSheet.create({
   grandTotalAmount: {
     fontSize: 64,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 16,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
@@ -483,29 +490,29 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginLeft: 8,
     marginRight: 4,
   },
   statLabel: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     opacity: 0.9,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 16,
     marginTop: 8,
   },
   vehicleCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   vehicleHeaderTouchable: {
     marginBottom: 16,
@@ -530,28 +537,28 @@ const styles = StyleSheet.create({
   vehicleName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   vehicleStats: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
   savingsAmountContainer: {
     alignItems: 'center',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   savingsAmount: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#4dff4d',
+    color: theme.colors.successBright,
     marginBottom: 4,
   },
   savingsLabel: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -564,30 +571,30 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginTop: 24,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
   footerCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 20,
     marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   footerText: {
     fontSize: 16,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginLeft: 16,
     flex: 1,
     lineHeight: 24,
@@ -596,7 +603,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   jobsHeader: {
     marginBottom: 12,
@@ -604,17 +611,17 @@ const styles = StyleSheet.create({
   jobsHeaderText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   jobCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   jobHeader: {
     flexDirection: 'row',
@@ -635,12 +642,12 @@ const styles = StyleSheet.create({
   jobType: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   jobDate: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
   jobSavings: {
     alignItems: 'flex-end',
@@ -648,19 +655,19 @@ const styles = StyleSheet.create({
   jobSavingsAmount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4dff4d',
+    color: theme.colors.successBright,
     marginBottom: 2,
   },
   jobSavingsLabel: {
     fontSize: 11,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   jobDetails: {
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   jobDetailRow: {
     flexDirection: 'row',
@@ -672,7 +679,7 @@ const styles = StyleSheet.create({
   },
   jobDetailLabel: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -680,7 +687,7 @@ const styles = StyleSheet.create({
   jobDetailValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   jobMileage: {
     flexDirection: 'row',
@@ -688,20 +695,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   jobMileageText: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginLeft: 6,
   },
   costCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   costHeaderTouchable: {
     marginBottom: 16,
@@ -716,19 +723,19 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   costTotalAmount: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   costTotalLabel: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -745,22 +752,22 @@ const styles = StyleSheet.create({
   },
   costBreakdownLabel: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   costBreakdownValue: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   costBreakdownDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#4d4d4d',
+    backgroundColor: theme.colors.border,
   },
   costGrandTotalCard: {
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     borderRadius: 16,
     padding: 20,
     marginBottom: 32,
@@ -770,7 +777,7 @@ const styles = StyleSheet.create({
   costGrandTotalLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
     opacity: 0.9,
     letterSpacing: 1,
     marginBottom: 12,
@@ -780,7 +787,7 @@ const styles = StyleSheet.create({
   costGrandTotalAmount: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -798,7 +805,7 @@ const styles = StyleSheet.create({
   },
   costGrandTotalItemLabel: {
     fontSize: 11,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -806,7 +813,7 @@ const styles = StyleSheet.create({
   costGrandTotalItemValue: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   costGrandTotalDivider: {
     width: 1,
@@ -814,17 +821,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#0066cc33',
   },
   emptyCostCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 32,
     marginBottom: 32,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   emptyCostText: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 20,

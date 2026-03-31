@@ -16,21 +16,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { theme } from '../theme';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const ANIMATION_DURATION = 375;
-
-// Colors matching the app's theme
-const colors = {
-  background: '#2d2d2d',
-  backgroundSecondary: '#1a1a1a',
-  textPrimary: '#ffffff',
-  textSecondary: '#b0b0b0',
-  primary: '#0066cc',
-  error: '#ff4444',
-  success: '#4dff4d',
-  border: '#3d3d3d',
-};
 
 export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
   const [formData, setFormData] = useState({
@@ -180,8 +169,13 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
             <Text style={styles.title} numberOfLines={1}>
               Lend Item: {item?.name || 'Item'}
             </Text>
-            <TouchableOpacity onPress={() => handleAnimatedClose(onCancel)} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#fff" />
+            <TouchableOpacity
+              onPress={() => handleAnimatedClose(onCancel)}
+              style={styles.closeButton}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
+              <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -199,13 +193,14 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
             >
             <View style={styles.formGroup}>
               <Text style={styles.label}>
-                <Ionicons name="person" size={16} color={colors.primary} /> Borrower Name *
+                <Ionicons name="person" size={16} color={theme.colors.primary} /> Borrower Name *
               </Text>
               <TextInput
                 style={styles.input}
                 value={formData.borrowedBy}
                 onChangeText={(text) => setFormData({ ...formData, borrowedBy: text })}
                 placeholder="e.g., John Smith, Neighbor Bob"
+                accessibilityLabel="Borrower Name"
                 placeholderTextColor="#666"
               />
             </View>
@@ -218,6 +213,7 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
                   value={formData.contactPhone}
                   onChangeText={(text) => setFormData({ ...formData, contactPhone: text })}
                   placeholder="(555) 123-4567"
+                  accessibilityLabel="Phone"
                   placeholderTextColor="#666"
                   keyboardType="phone-pad"
                 />
@@ -229,6 +225,7 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
                   value={formData.contactEmail}
                   onChangeText={(text) => setFormData({ ...formData, contactEmail: text })}
                   placeholder="email@example.com"
+                  accessibilityLabel="Email"
                   placeholderTextColor="#666"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -238,7 +235,7 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>
-                <Ionicons name="camera" size={16} color={colors.primary} /> Photo (Optional)
+                <Ionicons name="camera" size={16} color={theme.colors.primary} /> Photo (Optional)
               </Text>
               {photo ? (
                 <View style={styles.photoContainer}>
@@ -246,8 +243,10 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
                   <TouchableOpacity
                     style={styles.removePhotoButton}
                     onPress={handleRemovePhoto}
+                    accessibilityLabel="Remove photo"
+                    accessibilityRole="button"
                   >
-                    <Ionicons name="trash" size={20} color="#fff" />
+                    <Ionicons name="trash" size={20} color={theme.colors.textPrimary} />
                     <Text style={styles.removePhotoText}>Remove Photo</Text>
                   </TouchableOpacity>
                 </View>
@@ -256,15 +255,19 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
                   <TouchableOpacity
                     style={styles.photoButton}
                     onPress={handleTakePhoto}
+                    accessibilityLabel="Take photo"
+                    accessibilityRole="button"
                   >
-                    <Ionicons name="camera" size={24} color={colors.primary} />
+                    <Ionicons name="camera" size={24} color={theme.colors.primary} />
                     <Text style={styles.photoButtonText}>Take Photo</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.photoButton}
                     onPress={handlePickImage}
+                    accessibilityLabel="Select image from library"
+                    accessibilityRole="button"
                   >
-                    <Ionicons name="image" size={24} color={colors.primary} />
+                    <Ionicons name="image" size={24} color={theme.colors.primary} />
                     <Text style={styles.photoButtonText}>Select Image</Text>
                   </TouchableOpacity>
                 </View>
@@ -281,6 +284,7 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
                 value={formData.notes}
                 onChangeText={(text) => setFormData({ ...formData, notes: text })}
                 placeholder="e.g., Needs it for weekend project, will return Monday"
+                accessibilityLabel="Notes"
                 placeholderTextColor="#666"
                 multiline
                 numberOfLines={3}
@@ -289,7 +293,7 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
 
             <View style={styles.reminderBox}>
               <View style={styles.reminderHeader}>
-                <Ionicons name="calendar" size={16} color="#4dff4d" />
+                <Ionicons name="calendar" size={16} color={theme.colors.successBright} />
                 <Text style={styles.reminderTitle}>Return Reminder</Text>
               </View>
               <Text style={styles.reminderText}>
@@ -303,12 +307,16 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => handleAnimatedClose(onCancel)}
+                accessibilityLabel="Cancel"
+                accessibilityRole="button"
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.submitButton]}
                 onPress={handleSubmit}
+                accessibilityLabel="Lend item"
+                accessibilityRole="button"
               >
                 <Text style={styles.submitButtonText}>Lend Item</Text>
               </TouchableOpacity>
@@ -326,7 +334,7 @@ export default function BorrowItemModal({ item, visible, onLend, onCancel }) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -335,7 +343,7 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     height: '85%',
     maxHeight: '85%',
-    backgroundColor: colors.background,
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -349,14 +357,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: colors.background,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: theme.colors.surfaceElevated,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     flex: 1,
     marginRight: 12,
   },
@@ -385,16 +393,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.surfaceElevated,
     borderRadius: 12,
     padding: 14,
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: 16,
   },
   textArea: {
@@ -417,13 +425,13 @@ const styles = StyleSheet.create({
   removePhotoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.error,
+    backgroundColor: theme.colors.danger,
     padding: 12,
     borderRadius: 12,
     gap: 8,
   },
   removePhotoText: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -437,30 +445,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: theme.colors.background,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: theme.colors.primary,
     borderRadius: 12,
     padding: 14,
     gap: 8,
   },
   photoButtonText: {
-    color: colors.primary,
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   helpText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     marginTop: 6,
     fontWeight: '500',
   },
   reminderBox: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: theme.colors.background,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.surfaceElevated,
     marginBottom: 20,
   },
   reminderHeader: {
@@ -472,16 +480,16 @@ const styles = StyleSheet.create({
   reminderTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
   },
   reminderText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     lineHeight: 20,
   },
   reminderDate: {
     fontWeight: '700',
-    color: colors.success,
+    color: theme.colors.successBright,
   },
   actions: {
     flexDirection: 'row',
@@ -501,20 +509,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cancelButton: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.surfaceElevated,
   },
   cancelButtonText: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.colors.primary,
   },
   submitButtonText: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },

@@ -145,9 +145,9 @@ export async function presentPaywall(options = {}) {
 }
 
 /**
- * Check if RevenueCat UI is available
+ * Check if RevenueCat UI is available (initializes module on first call)
  * @returns {boolean} True if RevenueCat UI is available
  */
 export function isRevenueCatUIAvailable() {
-  return revenueCatUIAvailable;
+  return initializeRevenueCatUI() !== null;
 }

@@ -95,7 +95,7 @@ export function getVehicleContext(vehicle) {
     engine: vehicle.trim ? `(${vehicle.trim})` : ''
   };
 
-  // Modifications/Build sheet
+  // Modifications (stored as vehicle.buildSheet)
   const modifications = getBuildSheet(vehicle);
 
   // Recent maintenance history

@@ -124,12 +124,16 @@ export default function MileageUpdateModal({ vehicle, onUpdate, onSkip }) {
                       <TouchableOpacity
                         style={styles.skipButton}
                         onPress={() => handleAnimatedClose(() => onUpdate(null, true))}
+                        accessibilityLabel="Skip mileage update"
+                        accessibilityRole="button"
                       >
                         <Text style={styles.skipButtonText}>Skip</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.adjustButton}
                         onPress={() => setShowAdjustInput(true)}
+                        accessibilityLabel="Adjust mileage"
+                        accessibilityRole="button"
                       >
                         <Text style={styles.adjustButtonText}>Adjust</Text>
                       </TouchableOpacity>
@@ -138,6 +142,8 @@ export default function MileageUpdateModal({ vehicle, onUpdate, onSkip }) {
                         onPress={() => {
                           onUpdate(String(prediction.predicted), false);
                         }}
+                        accessibilityLabel="Confirm mileage"
+                        accessibilityRole="button"
                       >
                         <Text style={styles.confirmButtonText}>Confirm</Text>
                       </TouchableOpacity>
@@ -150,6 +156,7 @@ export default function MileageUpdateModal({ vehicle, onUpdate, onSkip }) {
                       value={mileage}
                       onChangeText={setMileage}
                       placeholder="Enter odometer reading"
+                      accessibilityLabel="Mileage"
                       placeholderTextColor={theme.colors.textTertiary}
                       keyboardType="numeric"
                     />
@@ -157,6 +164,8 @@ export default function MileageUpdateModal({ vehicle, onUpdate, onSkip }) {
                       <TouchableOpacity
                         style={styles.skipButton}
                         onPress={() => handleAnimatedClose(() => onUpdate(null, true))}
+                        accessibilityLabel="Skip mileage update"
+                        accessibilityRole="button"
                       >
                         <Text style={styles.skipButtonText}>Skip</Text>
                       </TouchableOpacity>
@@ -167,6 +176,8 @@ export default function MileageUpdateModal({ vehicle, onUpdate, onSkip }) {
                             setShowAdjustInput(false);
                             setMileage(String(prediction.predicted));
                           }}
+                          accessibilityLabel="Use predicted mileage"
+                          accessibilityRole="button"
                         >
                           <Text style={styles.adjustButtonText}>Use predicted</Text>
                         </TouchableOpacity>
@@ -174,6 +185,8 @@ export default function MileageUpdateModal({ vehicle, onUpdate, onSkip }) {
                       <TouchableOpacity
                         style={styles.updateButton}
                         onPress={handleConfirm}
+                        accessibilityLabel="Update mileage"
+                        accessibilityRole="button"
                       >
                         <Text style={styles.updateButtonText}>Update</Text>
                       </TouchableOpacity>

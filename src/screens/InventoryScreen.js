@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import BarcodeScanner from '../components/BarcodeScanner';
+import { theme } from '../theme';
+import EmptyState from '../components/EmptyState';
 
 export default function InventoryScreen({ appContext }) {
   const { 
@@ -165,7 +168,7 @@ export default function InventoryScreen({ appContext }) {
             <Text style={styles.itemName}>{item.name}</Text>
             {isLowStock(item) && (
               <View style={styles.lowStockBadge}>
-                <Ionicons name="warning" size={14} color="#ff4444" />
+                <Ionicons name="warning" size={14} color={theme.colors.danger} />
                 <Text style={styles.lowStockText}>Low Stock</Text>
               </View>
             )}
@@ -184,7 +187,7 @@ export default function InventoryScreen({ appContext }) {
                 const vehicle = vehicles?.find(v => v.id === vehicleId);
                 return vehicle ? (
                   <View key={vehicleId} style={styles.vehicleTag}>
-                    <Ionicons name="car" size={12} color="#0066cc" />
+                    <Ionicons name="car" size={12} color={theme.colors.primary} />
                     <Text style={styles.vehicleTagText}>
                       {vehicle.make} {vehicle.model}
                     </Text>
@@ -202,8 +205,10 @@ export default function InventoryScreen({ appContext }) {
                 setBorrowingItem && setBorrowingItem(item);
                 setShowBorrowModal && setShowBorrowModal(true);
               }}
+              accessibilityRole="button"
+              accessibilityLabel={`Lend ${item.name}`}
             >
-              <Ionicons name="hand-left-outline" size={18} color="#ffaa00" />
+              <Ionicons name="hand-left-outline" size={18} color={theme.colors.warningLight} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -226,28 +231,43 @@ export default function InventoryScreen({ appContext }) {
                   ]
                 );
               }}
+              accessibilityRole="button"
+              accessibilityLabel={`Return ${item.name}`}
             >
-              <Ionicons name="checkmark-circle" size={18} color="#4dff4d" />
+              <Ionicons name="checkmark-circle" size={18} color={theme.colors.successBright} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => handleEdit(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${item.name}`}
           >
-            <Ionicons name="create" size={18} color="#0066cc" />
+            <Ionicons name="create" size={18} color={theme.colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.deleteButton}
-            onPress={() => deleteInventoryItem && deleteInventoryItem(item.id)}
+            onPress={() => {
+              Alert.alert(
+                'Delete Item',
+                `Are you sure you want to delete "${item.name}"?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => deleteInventoryItem && deleteInventoryItem(item.id) }
+                ]
+              );
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${item.name}`}
           >
-            <Ionicons name="trash" size={18} color="#ff4444" />
+            <Ionicons name="trash" size={18} color={theme.colors.danger} />
           </TouchableOpacity>
         </View>
       </View>
       {item.isBorrowed && (
         <View style={styles.borrowedSection}>
           <View style={styles.borrowedBadge}>
-            <Ionicons name="person" size={14} color="#ffaa00" />
+            <Ionicons name="person" size={14} color={theme.colors.warningLight} />
             <Text style={styles.borrowedText}>
               Borrowed by {item.borrowedBy}
             </Text>
@@ -274,7 +294,7 @@ export default function InventoryScreen({ appContext }) {
     return (
       <View style={styles.container}>
         <View style={styles.emptyState}>
-          <Ionicons name="cube" size={64} color="#666" />
+          <Ionicons name="cube" size={64} color={theme.colors.textTertiary} />
           <Text style={styles.emptyText}>Loading inventory...</Text>
         </View>
       </View>
@@ -282,16 +302,19 @@ export default function InventoryScreen({ appContext }) {
   }
 
   return (
+    <SafeAreaView style={{flex: 1, backgroundColor: theme.colors.background}} edges={['top']}>
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardDismissMode="on-drag">
         {/* To Do List Section */}
         <View style={styles.todoSection}>
           <TouchableOpacity
             style={styles.todoHeader}
             onPress={() => setIsTodoExpanded(!isTodoExpanded)}
+            accessibilityRole="button"
+            accessibilityLabel={isTodoExpanded ? "Collapse To Do section" : "Expand To Do section"}
           >
             <View style={styles.todoHeaderLeft}>
-              <Ionicons name="checkmark-circle-outline" size={24} color="#0066cc" />
+              <Ionicons name="checkmark-circle-outline" size={24} color={theme.colors.primary} />
               <Text style={styles.todoSectionTitle}>To Do</Text>
               {activeTodos.length > 0 && (
                 <View style={styles.todoBadge}>
@@ -317,13 +340,16 @@ export default function InventoryScreen({ appContext }) {
                   value={newTodoText}
                   onChangeText={setNewTodoText}
                   onSubmitEditing={handleAddTodo}
+                  accessibilityLabel="Add a task"
                 />
                 <TouchableOpacity
                   style={[styles.addTodoButton, !newTodoText.trim() && styles.addTodoButtonDisabled]}
                   onPress={handleAddTodo}
                   disabled={!newTodoText.trim()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add task"
                 >
-                  <Ionicons name="add" size={20} color="#fff" />
+                  <Ionicons name="add" size={20} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
 
@@ -335,15 +361,19 @@ export default function InventoryScreen({ appContext }) {
                       <TouchableOpacity
                         style={styles.todoCheckbox}
                         onPress={() => toggleTodo && toggleTodo(todo.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Mark ${todo.text} as complete`}
                       >
-                        <Ionicons name="ellipse-outline" size={20} color="#b0b0b0" />
+                        <Ionicons name="ellipse-outline" size={20} color={theme.colors.textSecondary} />
                       </TouchableOpacity>
                       <Text style={styles.todoText}>{todo.text}</Text>
                       <TouchableOpacity
                         style={styles.todoDeleteButton}
                         onPress={() => handleDeleteTodo(todo.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete task ${todo.text}`}
                       >
-                        <Ionicons name="trash-outline" size={18} color="#ff4444" />
+                        <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -359,15 +389,19 @@ export default function InventoryScreen({ appContext }) {
                       <TouchableOpacity
                         style={styles.todoCheckbox}
                         onPress={() => toggleTodo && toggleTodo(todo.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Mark ${todo.text} as incomplete`}
                       >
-                        <Ionicons name="checkmark-circle" size={20} color="#4dff4d" />
+                        <Ionicons name="checkmark-circle" size={20} color={theme.colors.successBright} />
                       </TouchableOpacity>
                       <Text style={[styles.todoText, styles.todoTextCompleted]}>{todo.text}</Text>
                       <TouchableOpacity
                         style={styles.todoDeleteButton}
                         onPress={() => handleDeleteTodo(todo.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete task ${todo.text}`}
                       >
-                        <Ionicons name="trash-outline" size={18} color="#ff4444" />
+                        <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -376,7 +410,7 @@ export default function InventoryScreen({ appContext }) {
 
               {todos.length === 0 && (
                 <View style={styles.todoEmptyState}>
-                  <Ionicons name="checkmark-circle-outline" size={48} color="#666" />
+                  <Ionicons name="checkmark-circle-outline" size={48} color={theme.colors.textTertiary} />
                   <Text style={styles.todoEmptyText}>No tasks yet</Text>
                   <Text style={styles.todoEmptySubtext}>Add a task to get started</Text>
                 </View>
@@ -390,9 +424,11 @@ export default function InventoryScreen({ appContext }) {
           <TouchableOpacity
             style={styles.shoppingListHeader}
             onPress={() => setIsShoppingListExpanded(!isShoppingListExpanded)}
+            accessibilityRole="button"
+            accessibilityLabel={isShoppingListExpanded ? "Collapse Shopping List section" : "Expand Shopping List section"}
           >
             <View style={styles.shoppingListHeaderLeft}>
-              <Ionicons name="cart" size={24} color="#4CAF50" />
+              <Ionicons name="cart" size={24} color={theme.colors.successIndicator} />
               <Text style={styles.shoppingListSectionTitle}>Shopping List</Text>
               {activeShoppingItems.length > 0 && (
                 <View style={styles.shoppingBadge}>
@@ -418,19 +454,24 @@ export default function InventoryScreen({ appContext }) {
                   value={newShoppingItemText}
                   onChangeText={setNewShoppingItemText}
                   onSubmitEditing={handleAddShoppingItem}
+                  accessibilityLabel="Add item to shopping list"
                 />
                 <TouchableOpacity
                   style={[styles.addShoppingItemButton, !newShoppingItemText.trim() && styles.addShoppingItemButtonDisabled]}
                   onPress={handleAddShoppingItem}
                   disabled={!newShoppingItemText.trim()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add item"
                 >
-                  <Ionicons name="add" size={20} color="#fff" />
+                  <Ionicons name="add" size={20} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.scanButton}
                   onPress={() => setShowScanner(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Scan barcode"
                 >
-                  <Ionicons name="barcode" size={20} color="#fff" />
+                  <Ionicons name="barcode" size={20} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
 
@@ -442,8 +483,10 @@ export default function InventoryScreen({ appContext }) {
                       <TouchableOpacity
                         style={styles.shoppingCheckbox}
                         onPress={() => handleToggleShoppingItem(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Mark ${item.name} as purchased`}
                       >
-                        <Ionicons name="ellipse-outline" size={20} color="#b0b0b0" />
+                        <Ionicons name="ellipse-outline" size={20} color={theme.colors.textSecondary} />
                       </TouchableOpacity>
                       <View style={styles.shoppingItemDetails}>
                         <Text style={styles.shoppingItemName}>{item.name}</Text>
@@ -461,8 +504,10 @@ export default function InventoryScreen({ appContext }) {
                         <TouchableOpacity
                           style={styles.shoppingDeleteButton}
                           onPress={() => handleDeleteShoppingItem(item)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Delete ${item.name} from shopping list`}
                         >
-                          <Ionicons name="trash-outline" size={18} color="#ff4444" />
+                          <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -475,7 +520,11 @@ export default function InventoryScreen({ appContext }) {
                 <View style={styles.shoppingCompletedSection}>
                   <View style={styles.shoppingCompletedHeader}>
                     <Text style={styles.shoppingCompletedTitle}>Completed</Text>
-                    <TouchableOpacity onPress={() => clearCompletedShoppingItems && clearCompletedShoppingItems()}>
+                    <TouchableOpacity
+                      onPress={() => clearCompletedShoppingItems && clearCompletedShoppingItems()}
+                      accessibilityRole="button"
+                      accessibilityLabel="Clear completed items"
+                    >
                       <Text style={styles.clearCompletedText}>Clear</Text>
                     </TouchableOpacity>
                   </View>
@@ -484,8 +533,10 @@ export default function InventoryScreen({ appContext }) {
                       <TouchableOpacity
                         style={styles.shoppingCheckbox}
                         onPress={() => handleToggleShoppingItem(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Mark ${item.name} as unpurchased`}
                       >
-                        <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                        <Ionicons name="checkmark-circle" size={20} color={theme.colors.successIndicator} />
                       </TouchableOpacity>
                       <Text style={[styles.shoppingItemName, styles.shoppingItemNameCompleted]}>{item.name}</Text>
                     </View>
@@ -496,7 +547,7 @@ export default function InventoryScreen({ appContext }) {
               {/* Empty State */}
               {combinedShoppingList.length === 0 && (
                 <View style={styles.shoppingEmptyState}>
-                  <Ionicons name="cart-outline" size={48} color="#666" />
+                  <Ionicons name="cart-outline" size={48} color={theme.colors.textTertiary} />
                   <Text style={styles.shoppingEmptyText}>No items yet</Text>
                   <Text style={styles.shoppingEmptySubtext}>Low stock items will appear here automatically</Text>
                 </View>
@@ -508,14 +559,23 @@ export default function InventoryScreen({ appContext }) {
         {/* Inventory Section */}
         <View style={styles.inventorySection}>
           <View style={styles.inventoryHeader}>
-            <Text style={styles.inventorySectionTitle}>Inventory</Text>
-            <View style={styles.inventoryHeaderButtons}>
+            <View style={styles.inventoryHeaderTop}>
+              <Text style={styles.inventorySectionTitle}>Inventory</Text>
+              {filteredInventory && filteredInventory.length > 0 && (
+                <View style={styles.inventoryBadge}>
+                  <Text style={styles.inventoryBadgeText}>{filteredInventory.length}</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.inventoryHeaderActions}>
               {launchReceiptScan && (
                 <TouchableOpacity
                   style={styles.scanReceiptButton}
                   onPress={() => launchReceiptScan('garage')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Scan Receipt"
                 >
-                  <Ionicons name="document-text" size={18} color="#0066cc" />
+                  <Ionicons name="document-text-outline" size={18} color={theme.colors.primary} />
                   <Text style={styles.scanReceiptButtonText}>Scan Receipt</Text>
                 </TouchableOpacity>
               )}
@@ -526,8 +586,10 @@ export default function InventoryScreen({ appContext }) {
                     setShowInventoryForm(true);
                   }
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Add Item"
               >
-                <Ionicons name="add" size={20} color="#fff" />
+                <Ionicons name="add" size={18} color={theme.colors.textPrimary} />
                 <Text style={styles.addButtonText}>Add Item</Text>
               </TouchableOpacity>
             </View>
@@ -540,7 +602,8 @@ export default function InventoryScreen({ appContext }) {
                   selectedValue={localFilter}
                   onValueChange={(value) => setLocalFilter(value)}
                   style={styles.picker}
-                  dropdownIconColor="#ffffff"
+                  dropdownIconColor={theme.colors.textPrimary}
+                  accessibilityLabel="Filter inventory by vehicle"
                 >
                   <Picker.Item label="All Items" value={null} />
                   {vehicles.map(vehicle => (
@@ -556,17 +619,13 @@ export default function InventoryScreen({ appContext }) {
           )}
 
           {!filteredInventory || filteredInventory.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="cube" size={64} color="#666" />
-              <Text style={styles.emptyText}>
-                {localFilter ? 'No items for this vehicle' : 'No inventory items yet'}
-              </Text>
-              <Text style={styles.emptySubtext}>
-                {localFilter 
-                  ? 'Try selecting a different vehicle or add items for this vehicle'
-                  : 'Add items to track your inventory'}
-              </Text>
-            </View>
+            <EmptyState
+              icon="cube"
+              title={localFilter ? 'No items for this vehicle' : 'No inventory items yet'}
+              message={localFilter
+                ? 'Try selecting a different vehicle or add items for this vehicle'
+                : 'Add items to track your inventory'}
+            />
           ) : (
             <View style={styles.inventoryList}>
               {filteredInventory.map(item => (
@@ -586,13 +645,14 @@ export default function InventoryScreen({ appContext }) {
         onClose={() => setShowScanner(false)}
       />
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -601,20 +661,20 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   todoSection: {
-    backgroundColor: '#2d2d2d',
-    margin: 16,
-    marginBottom: 8,
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    margin: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     overflow: 'hidden',
   },
   todoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2d2d2d',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
   },
   todoHeaderLeft: {
     flexDirection: 'row',
@@ -623,12 +683,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   todoSectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
   },
   todoBadge: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -636,8 +695,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   todoBadgeText: {
-    color: '#fff',
-    fontSize: 12,
+    color: theme.colors.textPrimary,
+    ...theme.typography.caption,
     fontWeight: '600',
   },
   todoContent: {
@@ -652,15 +711,15 @@ const styles = StyleSheet.create({
   },
   addTodoInput: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
-    color: '#fff',
+    backgroundColor: theme.colors.surfaceElevated,
+    color: theme.colors.textPrimary,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
     fontSize: 14,
   },
   addTodoButton: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -668,7 +727,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addTodoButtonDisabled: {
-    backgroundColor: '#4d4d4d',
+    backgroundColor: theme.colors.border,
     opacity: 0.5,
   },
   todoList: {
@@ -679,7 +738,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 8,
     marginBottom: 8,
     gap: 12,
@@ -689,12 +748,12 @@ const styles = StyleSheet.create({
   },
   todoText: {
     flex: 1,
-    fontSize: 14,
-    color: '#ffffff',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textPrimary,
   },
   todoTextCompleted: {
     textDecorationLine: 'line-through',
-    color: '#909090',
+    color: theme.colors.textMuted,
   },
   todoDeleteButton: {
     padding: 4,
@@ -703,11 +762,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   completedTitle: {
-    fontSize: 12,
-    color: '#909090',
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
     fontWeight: '600',
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -717,65 +776,87 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   todoEmptyText: {
-    fontSize: 16,
-    color: '#ffffff',
-    marginTop: 12,
-    marginBottom: 4,
+    ...theme.typography.body,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
   },
   todoEmptySubtext: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   inventorySection: {
     flex: 1,
-    padding: 16,
-    paddingTop: 0,
+    backgroundColor: theme.colors.surface,
+    margin: theme.spacing.lg,
+    marginTop: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.lg,
   },
   inventoryHeader: {
+    marginBottom: 12,
+  },
+  inventoryHeaderTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
     marginBottom: 12,
   },
   inventorySectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
   },
-  inventoryHeaderButtons: {
+  inventoryBadge: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  inventoryBadgeText: {
+    color: theme.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  inventoryHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   scanReceiptButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: theme.borderRadius.sm,
     gap: 6,
-    borderWidth: 2,
-    borderColor: '#0066cc',
-    backgroundColor: 'rgba(0,102,204,0.15)',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(0,102,204,0.1)',
   },
   scanReceiptButtonText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
   filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 0,
+    marginBottom: 8,
   },
   filterLabel: {
-    color: '#b0b0b0',
-    fontSize: 14,
+    color: theme.colors.textSecondary,
+    ...theme.typography.bodySmall,
   },
   pickerContainer: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 8,
     overflow: 'hidden',
     minWidth: 150,
@@ -783,34 +864,36 @@ const styles = StyleSheet.create({
   },
   picker: {
     flex: 1,
-    color: '#fff',
-    backgroundColor: '#3d3d3d',
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.surfaceElevated,
     height: 48,
   },
   addButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     gap: 6,
   },
   addButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
   inventoryList: {
     marginTop: 8,
   },
   itemCard: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -821,9 +904,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   actionButtons: {
@@ -832,15 +914,31 @@ const styles = StyleSheet.create({
   },
   lendButton: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   returnButton: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   editButton: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   deleteButton: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemNameRow: {
     flexDirection: 'row',
@@ -858,7 +956,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   lowStockText: {
-    color: '#ff4444',
+    color: theme.colors.danger,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -871,37 +969,37 @@ const styles = StyleSheet.create({
   vehicleTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
     gap: 4,
   },
   vehicleTagText: {
-    fontSize: 12,
-    color: '#0066cc',
+    ...theme.typography.caption,
+    color: theme.colors.primary,
     fontWeight: '500',
   },
   itemDetails: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   itemLocation: {
-    fontSize: 12,
-    color: '#909090',
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
     marginTop: 4,
   },
   borrowedSection: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#3d3d3d',
+    borderTopColor: theme.colors.surfaceElevated,
   },
   borrowedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3d2d00',
+    backgroundColor: theme.colors.warningDark || 'rgba(255,152,0,0.15)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -909,18 +1007,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   borrowedText: {
-    color: '#ffaa00',
+    color: theme.colors.warningLight,
     fontSize: 12,
     fontWeight: '600',
   },
   borrowedDate: {
-    fontSize: 12,
-    color: '#b0b0b0',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   reminderText: {
-    fontSize: 12,
-    color: '#4dff4d',
+    ...theme.typography.caption,
+    color: theme.colors.successBright,
     marginBottom: 8,
   },
   borrowedPhoto: {
@@ -937,33 +1035,33 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyText: {
-    fontSize: 18,
-    color: '#ffffff',
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   // Shopping List Styles
   shoppingListSection: {
-    backgroundColor: '#2d2d2d',
-    margin: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    margin: theme.spacing.lg,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     overflow: 'hidden',
   },
   shoppingListHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2d2d2d',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
   },
   shoppingListHeaderLeft: {
     flexDirection: 'row',
@@ -972,12 +1070,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   shoppingListSectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
   },
   shoppingBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.successIndicator,
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -985,7 +1082,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shoppingBadgeText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1001,15 +1098,15 @@ const styles = StyleSheet.create({
   },
   addShoppingItemInput: {
     flex: 1,
-    backgroundColor: '#3d3d3d',
-    color: '#fff',
+    backgroundColor: theme.colors.surfaceElevated,
+    color: theme.colors.textPrimary,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
     fontSize: 14,
   },
   addShoppingItemButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.successIndicator,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1017,11 +1114,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addShoppingItemButtonDisabled: {
-    backgroundColor: '#4d4d4d',
+    backgroundColor: theme.colors.border,
     opacity: 0.5,
   },
   scanButton: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1036,7 +1133,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    backgroundColor: '#3d3d3d',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 8,
     marginBottom: 8,
     gap: 12,
@@ -1051,27 +1148,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   shoppingItemName: {
-    fontSize: 14,
-    color: '#ffffff',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textPrimary,
   },
   shoppingItemNameCompleted: {
     textDecorationLine: 'line-through',
-    color: '#909090',
+    color: theme.colors.textMuted,
     flex: 1,
   },
   shoppingItemSubtext: {
     fontSize: 11,
-    color: '#ff9800',
+    color: theme.colors.warning,
     marginTop: 2,
   },
   autoAddedBadge: {
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   autoAddedText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 10,
     fontWeight: '600',
   },
@@ -1082,7 +1179,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   shoppingCompletedHeader: {
     flexDirection: 'row',
@@ -1091,14 +1188,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   shoppingCompletedTitle: {
-    fontSize: 12,
-    color: '#909090',
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   clearCompletedText: {
-    fontSize: 12,
-    color: '#ff4444',
+    ...theme.typography.caption,
+    color: theme.colors.danger,
     fontWeight: '500',
   },
   shoppingEmptyState: {
@@ -1106,13 +1203,13 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   shoppingEmptyText: {
-    fontSize: 16,
-    color: '#ffffff',
+    ...theme.typography.body,
+    color: theme.colors.textPrimary,
     marginTop: 12,
     marginBottom: 4,
   },
   shoppingEmptySubtext: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
 });

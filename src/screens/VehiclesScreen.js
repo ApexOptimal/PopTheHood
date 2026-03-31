@@ -9,9 +9,11 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatDistanceWithSeparators } from '../utils/unitConverter';
 import { calculateOilLife } from '../utils/oilLife';
 import { theme } from '../theme';
+import EmptyState from '../components/EmptyState';
 
 export default function VehiclesScreen({ navigation, appContext }) {
   const { vehicles, setShowVehicleForm, setEditingVehicle, setShowMaintenanceForm, setSelectedVehicle, deleteVehicle, setShowMileageModal, setMileageModalVehicle } = appContext;
@@ -23,7 +25,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
   const checkVehicleAlerts = (vehicle) => {
     const intervals = vehicle.serviceIntervals || {};
     const estimates = vehicle.estimatedLastService || {};
-    const currentMileage = parseInt(vehicle.mileage) || 0;
+    const currentMileage = parseInt(vehicle.mileage, 10) || 0;
 
     for (const [serviceType, interval] of Object.entries(intervals)) {
       if (!interval) continue;
@@ -35,10 +37,10 @@ export default function VehiclesScreen({ navigation, appContext }) {
       const daysSince = (new Date() - lastServiceDate) / (1000 * 60 * 60 * 24);
       const estimatedMilesPerDay = currentMileage / Math.max(1, (new Date() - new Date(vehicle.createdAt || Date.now())) / (1000 * 60 * 60 * 24));
       const lastServiceMileage = Math.max(0, currentMileage - (estimatedMilesPerDay * daysSince));
-      const nextServiceMileage = lastServiceMileage + parseInt(interval);
+      const nextServiceMileage = lastServiceMileage + parseInt(interval, 10);
 
       if (nextServiceMileage <= currentMileage) return true;
-      if (nextServiceMileage - currentMileage <= parseInt(interval) * 0.1) return true;
+      if (nextServiceMileage - currentMileage <= parseInt(interval, 10) * 0.1) return true;
     }
     return false;
   };
@@ -48,10 +50,13 @@ export default function VehiclesScreen({ navigation, appContext }) {
     const hasAlerts = checkVehicleAlerts(item);
     const oilLife = calculateOilLife(item);
 
+    const vehicleLabel = `View ${item.year || ''} ${item.make} ${item.model}`.trim();
     return (
       <TouchableOpacity
         style={[styles.vehicleCard, hasAlerts && styles.vehicleCardAlert]}
         onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
+        accessibilityRole="button"
+        accessibilityLabel={vehicleLabel}
       >
         {vehicleImage ? (
           <Image source={{ uri: vehicleImage }} style={styles.vehicleImage} />
@@ -91,6 +96,8 @@ export default function VehiclesScreen({ navigation, appContext }) {
                     }
                   }}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Update mileage for ${item.make} ${item.model}`}
                 >
                   <Ionicons name="speedometer" size={16} color={theme.colors.primary} />
                   <Text style={styles.mileageText}>
@@ -106,6 +113,8 @@ export default function VehiclesScreen({ navigation, appContext }) {
                   setEditingVehicle(item);
                   setShowVehicleForm(true);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit vehicle"
               >
                 <Ionicons name="create" size={18} color={theme.colors.textSecondary} />
               </TouchableOpacity>
@@ -115,12 +124,25 @@ export default function VehiclesScreen({ navigation, appContext }) {
                   setSelectedVehicle(item);
                   setShowMaintenanceForm(true);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Add maintenance"
               >
                 <Ionicons name="build" size={18} color={theme.colors.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.dangerButton]}
-                onPress={() => deleteVehicle(item.id)}
+                onPress={() => {
+                  Alert.alert(
+                    'Delete Vehicle',
+                    'Are you sure you want to delete this vehicle? This cannot be undone.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => deleteVehicle(item.id) }
+                    ]
+                  );
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Delete vehicle"
               >
                 <Ionicons name="trash" size={18} color={theme.colors.danger} />
               </TouchableOpacity>
@@ -168,6 +190,8 @@ export default function VehiclesScreen({ navigation, appContext }) {
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
+              accessibilityRole="button"
+              accessibilityLabel="View Details"
             >
               <Ionicons name="eye" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.primaryButtonText}>View Details</Text>
@@ -178,6 +202,8 @@ export default function VehiclesScreen({ navigation, appContext }) {
                 setSelectedVehicle(item);
                 setShowMaintenanceForm(true);
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Add Maintenance"
             >
               <Ionicons name="calendar" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.secondaryButtonText}>Add Maintenance</Text>
@@ -192,6 +218,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
   };
 
   return (
+    <SafeAreaView style={{flex: 1, backgroundColor: theme.colors.background}} edges={['top']}>
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
@@ -199,7 +226,25 @@ export default function VehiclesScreen({ navigation, appContext }) {
         </Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => setShowVehicleForm(true)}
+          onPress={() => {
+            if (!appContext.isPro && vehicles.length >= 1) {
+              Alert.alert(
+                'Pro Feature',
+                'Adding multiple vehicles requires Pop the Hood Pro',
+                [
+                  {
+                    text: 'Upgrade',
+                    onPress: () => navigation.navigate('Vehicles', { screen: 'Subscription' }),
+                  },
+                  { text: 'Cancel', style: 'cancel' },
+                ]
+              );
+              return;
+            }
+            setShowVehicleForm(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Add Vehicle"
         >
           <Ionicons name="add" size={24} color={theme.colors.textPrimary} />
           <Text style={styles.addButtonText}>Add Vehicle</Text>
@@ -207,13 +252,11 @@ export default function VehiclesScreen({ navigation, appContext }) {
       </View>
 
       {vehicles.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="car" size={64} color={theme.colors.textTertiary} />
-          <Text style={styles.emptyText}>No vehicles added yet</Text>
-          <Text style={styles.emptySubtext}>
-            Add your first vehicle to get started!
-          </Text>
-        </View>
+        <EmptyState
+          icon="car"
+          title="No vehicles added yet"
+          message="Add your first vehicle to get started!"
+        />
       ) : (
         <FlatList
           data={vehicles}
@@ -223,6 +266,7 @@ export default function VehiclesScreen({ navigation, appContext }) {
         />
       )}
     </View>
+    </SafeAreaView>
   );
 }
 
@@ -359,6 +403,10 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: theme.spacing.sm,
     borderRadius: 6,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dangerButton: {},
   vehicleFooter: {

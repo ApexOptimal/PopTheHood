@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,11 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Linking,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   getOfferings,
   purchasePackage,
@@ -19,8 +22,10 @@ import {
   getActiveSubscriptionInfo,
   addCustomerInfoUpdateListener,
 } from '../utils/revenueCat';
-import { presentPaywall, presentPaywallIfNeeded } from '../utils/paywall';
+import { presentPaywall, isRevenueCatUIAvailable } from '../utils/paywall';
 import { presentCustomerCenter } from '../utils/customerCenter';
+import { theme } from '../theme';
+import logger from '../utils/logger';
 
 // Import RevenueCat SDK and UI - lazy loaded to avoid errors
 let Purchases = null;
@@ -73,6 +78,8 @@ export default function SubscriptionScreen({ navigation, appContext }) {
   const [isPro, setIsPro] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [purchasing, setPurchasing] = useState(false);
+  const autoPaywallPresentedRef = useRef(false);
+  const presentPaywallHandlerRef = useRef(() => {});
 
   useEffect(() => {
     loadSubscriptionData();
@@ -107,7 +114,7 @@ export default function SubscriptionScreen({ navigation, appContext }) {
         setSubscriptionInfo(subInfo);
       }
     } catch (error) {
-      console.error('Error loading subscription data:', error);
+      logger.error('Error loading subscription data:', error);
       Alert.alert('Error', 'Failed to load subscription information. Please try again.');
     } finally {
       setLoading(false);
@@ -131,7 +138,7 @@ export default function SubscriptionScreen({ navigation, appContext }) {
         }
       }
     } catch (error) {
-      console.error('Error checking Pro status:', error);
+      logger.error('Error checking Pro status:', error);
     }
   };
 
@@ -144,21 +151,14 @@ export default function SubscriptionScreen({ navigation, appContext }) {
     setPurchasing(true);
     try {
       const result = await purchasePackage(packageToPurchase);
-      
+
       if (result.success) {
-        setIsPro(result.isPro);
-        const subInfo = getActiveSubscriptionInfo(result.customerInfo);
-        setSubscriptionInfo(subInfo);
-        Alert.alert(
-          'Success!',
-          'Your subscription is now active. Thank you for upgrading to Pop the Hood Pro!',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
+        // Navigate back first, then let the RevenueCat listener and a deferred
+        // refresh settle state — avoids a race between navigation and setState
+        // calls that can trigger the ErrorBoundary.
+        navigation.goBack();
+        setTimeout(() => appContext?.refreshProStatus?.(), 300);
+        return;
       } else if (result.cancelled) {
         // User cancelled, no need to show error
         return;
@@ -166,7 +166,7 @@ export default function SubscriptionScreen({ navigation, appContext }) {
         Alert.alert('Purchase Failed', result.error || 'Unable to complete purchase. Please try again.');
       }
     } catch (error) {
-      console.error('Purchase error:', error);
+      logger.error('Purchase error:', error);
       Alert.alert('Error', 'An error occurred during purchase. Please try again.');
     } finally {
       setPurchasing(false);
@@ -177,13 +177,12 @@ export default function SubscriptionScreen({ navigation, appContext }) {
     setLoading(true);
     try {
       const result = await restorePurchases();
-      
+
       if (result.success) {
         if (result.isPro) {
-          setIsPro(true);
-          const subInfo = getActiveSubscriptionInfo(result.customerInfo);
-          setSubscriptionInfo(subInfo);
-          Alert.alert('Success', 'Your purchases have been restored!');
+          navigation.goBack();
+          setTimeout(() => appContext?.refreshProStatus?.(), 300);
+          return;
         } else {
           Alert.alert('No Purchases Found', 'We couldn\'t find any purchases to restore.');
         }
@@ -191,7 +190,7 @@ export default function SubscriptionScreen({ navigation, appContext }) {
         Alert.alert('Restore Failed', result.error || 'Unable to restore purchases. Please try again.');
       }
     } catch (error) {
-      console.error('Restore error:', error);
+      logger.error('Restore error:', error);
       Alert.alert('Error', 'An error occurred while restoring purchases.');
     } finally {
       setLoading(false);
@@ -201,35 +200,50 @@ export default function SubscriptionScreen({ navigation, appContext }) {
   const handlePresentPaywall = async () => {
     try {
       const result = await presentPaywall();
-      
+
       if (result.success) {
         if (result.purchased || result.restored) {
-          // User made a purchase or restored
-          await checkProStatus();
-          Alert.alert(
-            'Success!',
-            'Your subscription is now active. Thank you for upgrading to Pop the Hood Pro!',
-            [
-              {
-                text: 'OK',
-                onPress: () => navigation.goBack(),
-              },
-            ]
-          );
+          // Navigate first, then refresh — prevents simultaneous setState +
+          // navigation from triggering the ErrorBoundary.
+          navigation.goBack();
+          setTimeout(() => appContext?.refreshProStatus?.(), 300);
+          return;
         } else if (result.cancelled) {
-          // User cancelled, no need to show error
+          // User dismissed the paywall — refresh status in case they had an
+          // existing entitlement that wasn't reflected yet.
+          await checkProStatus();
           return;
         } else if (result.error) {
+          await checkProStatus();
           Alert.alert('Error', 'Unable to display subscription options. Please try again.');
         }
       } else {
-        Alert.alert('Error', result.error || 'Unable to display subscription options. Please try again.');
+        // RevenueCat UI not available or threw — fall back to local status check.
+        await checkProStatus();
+        if (!isPro) {
+          Alert.alert('Error', result.error || 'Unable to display subscription options. Please try again.');
+        }
       }
     } catch (error) {
-      console.error('Error presenting paywall:', error);
+      logger.error('Error presenting paywall:', error);
+      await checkProStatus();
       Alert.alert('Error', 'Unable to display subscription options. Please try again.');
     }
   };
+
+  presentPaywallHandlerRef.current = handlePresentPaywall;
+
+  // Open RevenueCat dashboard paywall when non-Pro user lands on this screen (dev client / store builds).
+  useEffect(() => {
+    if (loading || isPro) return;
+    if (!isRevenueCatUIAvailable()) return;
+    if (autoPaywallPresentedRef.current) return;
+    autoPaywallPresentedRef.current = true;
+    const t = setTimeout(() => {
+      presentPaywallHandlerRef.current?.();
+    }, 450);
+    return () => clearTimeout(t);
+  }, [loading, isPro]);
 
   const handlePresentCustomerCenter = async () => {
     try {
@@ -242,7 +256,7 @@ export default function SubscriptionScreen({ navigation, appContext }) {
         Alert.alert('Error', result.error || 'Unable to open customer center. Please try again.');
       }
     } catch (error) {
-      console.error('Error presenting customer center:', error);
+      logger.error('Error presenting customer center:', error);
       Alert.alert('Error', 'Unable to open customer center. Please try again.');
     }
   };
@@ -254,56 +268,77 @@ export default function SubscriptionScreen({ navigation, appContext }) {
 
   const getPackageDescription = (packageToPurchase) => {
     if (!packageToPurchase) return '';
-    
+
     const identifier = packageToPurchase.identifier.toLowerCase();
+    const product = packageToPurchase.product;
+
+    // Check for a free trial or introductory offer
+    const intro = product?.introductoryPrice;
+    if (intro && intro.price === 0) {
+      // Free trial — show duration and what happens after
+      const trialLabel = `${intro.periodNumberOfUnits} ${intro.periodUnit?.toLowerCase() || 'day'}${intro.periodNumberOfUnits !== 1 ? 's' : ''} free`;
+      const billingCycle = identifier.includes('monthly')
+        ? '/month after'
+        : identifier.includes('yearly') || identifier.includes('annual')
+          ? '/year after'
+          : '';
+      return `${trialLabel}, then ${product.priceString}${billingCycle}`;
+    }
+
     if (identifier.includes('monthly')) {
-      return 'Billed monthly';
+      return 'Billed monthly — cancel anytime';
     } else if (identifier.includes('yearly') || identifier.includes('annual')) {
-      return 'Billed annually';
+      return 'Billed annually — cancel anytime';
     } else if (identifier.includes('lifetime')) {
-      return 'One-time purchase';
+      return 'One-time purchase, no recurring charges';
     }
     return '';
   };
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Subscription</Text>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0066cc" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Loading subscription options...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  // RevenueCat Paywalls (dashboard templates) need react-native-purchases-ui in a dev/store build.
+  const useRcDashboardPaywall = Platform.OS !== 'web' && isRevenueCatUIAvailable();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Garage Assistant Pro</Text>
+        <Text style={styles.headerTitle}>Pop the Hood Pro</Text>
         <View style={styles.placeholder} />
       </View>
 
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
       {isPro ? (
         <View style={styles.proActiveContainer}>
           <View style={styles.proBadge}>
-            <Ionicons name="checkmark-circle" size={48} color="#4dff4d" />
+            <Ionicons name="checkmark-circle" size={48} color={theme.colors.successBright} />
             <Text style={styles.proBadgeTitle}>Pro Active</Text>
             <Text style={styles.proBadgeText}>
               You have access to all Pro features!
@@ -337,15 +372,21 @@ export default function SubscriptionScreen({ navigation, appContext }) {
           <TouchableOpacity
             style={styles.customerCenterButton}
             onPress={handlePresentCustomerCenter}
+            accessibilityLabel="Manage Subscription"
+            accessibilityRole="button"
           >
-            <Ionicons name="person-circle" size={20} color="#fff" />
+            <Ionicons name="person-circle" size={20} color={theme.colors.textPrimary} />
             <Text style={styles.customerCenterButtonText}>Manage Subscription</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <>
           <View style={styles.introSection}>
-            <Ionicons name="star" size={48} color="#0066cc" />
+            <Image
+              source={require('../../assets/PoptheHoodPro.png')}
+              style={styles.proHeroImage}
+              resizeMode="contain"
+            />
             <Text style={styles.introTitle}>Upgrade to Pro</Text>
             <Text style={styles.introText}>
               Unlock all premium features and get the most out of Pop the Hood
@@ -355,21 +396,37 @@ export default function SubscriptionScreen({ navigation, appContext }) {
           <View style={styles.featuresSection}>
             <Text style={styles.featuresTitle}>Pro Features</Text>
             {[
-              'Unlimited vehicles',
-              'Advanced maintenance tracking',
-              'Priority support',
-              'Export to PDF & CSV',
-              'Cloud backup & sync',
-              'Ad-free experience',
+              { emoji: '🏎️', text: 'Unlimited vehicles' },
+              { emoji: '🔄', text: 'Backup & sync across devices' },
+              { emoji: '🧠', text: 'Stoich AI Mechanic' },
+              { emoji: '🧾', text: 'AI receipt scanning' },
+              { emoji: '💊', text: 'Health score & diagnostics' },
+              { emoji: '📑', text: 'PDF report export' },
             ].map((feature, index) => (
               <View key={index} style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={20} color="#4dff4d" />
-                <Text style={styles.featureText}>{feature}</Text>
+                <Ionicons name="checkmark-circle" size={20} color={theme.colors.successBright} />
+                <Text style={styles.featureText}>{feature.text} {feature.emoji}</Text>
               </View>
             ))}
           </View>
 
-          {currentOffering && currentOffering.availablePackages.length > 0 ? (
+          {useRcDashboardPaywall ? (
+            <View style={styles.rcPaywallSection}>
+              <Text style={styles.rcPaywallTitle}>Subscribe with Pop the Hood Pro</Text>
+              <Text style={styles.rcPaywallSubtitle}>
+                See plans, free trial, and pricing in the full-screen paywall from RevenueCat (matches your dashboard and the store).
+              </Text>
+              <TouchableOpacity
+                style={styles.paywallButton}
+                onPress={handlePresentPaywall}
+                accessibilityLabel="View subscription plans"
+                accessibilityRole="button"
+              >
+                <Ionicons name="card-outline" size={22} color={theme.colors.textPrimary} />
+                <Text style={styles.paywallButtonText}>View plans & subscribe</Text>
+              </TouchableOpacity>
+            </View>
+          ) : currentOffering && currentOffering.availablePackages.length > 0 ? (
             <View style={styles.packagesSection}>
               <Text style={styles.packagesTitle}>Choose Your Plan</Text>
               
@@ -378,12 +435,14 @@ export default function SubscriptionScreen({ navigation, appContext }) {
                   key={pkg.identifier}
                   style={[
                     styles.packageCard,
-                    index === 0 && styles.packageCardFeatured,
+                    (pkg.identifier || '').toLowerCase().includes('annual') && styles.packageCardFeatured,
                   ]}
                   onPress={() => handlePurchase(pkg)}
                   disabled={purchasing}
+                  accessibilityLabel={`${(pkg.identifier || '').toLowerCase().includes('monthly') ? 'Monthly' : (pkg.identifier || '').toLowerCase().includes('yearly') || (pkg.identifier || '').toLowerCase().includes('annual') ? 'Yearly' : (pkg.identifier || '').toLowerCase().includes('lifetime') ? 'Lifetime' : 'Subscription'} plan, ${formatPrice(pkg)}`}
+                  accessibilityRole="button"
                 >
-                  {index === 0 && (
+                  {(pkg.identifier || '').toLowerCase().includes('annual') && (
                     <View style={styles.featuredBadge}>
                       <Text style={styles.featuredBadgeText}>POPULAR</Text>
                     </View>
@@ -417,7 +476,7 @@ export default function SubscriptionScreen({ navigation, appContext }) {
                   {purchasing && (
                     <ActivityIndicator
                       size="small"
-                      color="#0066cc"
+                      color={theme.colors.primary}
                       style={styles.purchasingIndicator}
                     />
                   )}
@@ -433,56 +492,73 @@ export default function SubscriptionScreen({ navigation, appContext }) {
           )}
 
           <TouchableOpacity
-            style={styles.paywallButton}
-            onPress={handlePresentPaywall}
-            disabled={purchasing}
-          >
-            <Ionicons name="card" size={20} color="#fff" />
-            <Text style={styles.paywallButtonText}>View All Plans</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={styles.restoreButton}
             onPress={handleRestore}
             disabled={loading}
+            accessibilityLabel="Restore purchases"
+            accessibilityRole="button"
           >
-            <Ionicons name="refresh" size={18} color="#0066cc" />
+            <Ionicons name="refresh" size={18} color={theme.colors.primary} />
             <Text style={styles.restoreButtonText}>Restore Purchases</Text>
           </TouchableOpacity>
+
+          <View style={styles.legalLinksRow}>
+            <TouchableOpacity
+              onPress={() => Linking.openURL('https://apexoptimal.dev/popthehood/terms')}
+              accessibilityLabel="Terms of Service"
+              accessibilityRole="link"
+            >
+              <Text style={styles.legalLinkText}>Terms of Service</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalLinkSeparator}>·</Text>
+            <TouchableOpacity
+              onPress={() => Linking.openURL('https://apexoptimal.dev/popthehood/privacy')}
+              accessibilityLabel="Privacy Policy"
+              accessibilityRole="link"
+            >
+              <Text style={styles.legalLinkText}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
         </>
       )}
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Subscriptions will auto-renew unless cancelled at least 24 hours before the end of the current period.
+          If a free trial is offered, your subscription will automatically begin and your payment method will be charged at the end of the trial period unless you cancel at least 24 hours before the trial ends. Subscriptions auto-renew at the stated price unless cancelled at least 24 hours before the end of the current period. You can manage or cancel your subscription anytime in your Apple ID settings.
         </Text>
         <TouchableOpacity
           style={styles.termsButton}
           onPress={() => {
-            // Open terms of service
-            Alert.alert('Terms of Service', 'Terms of service URL would go here');
+            Linking.openURL('https://apexoptimal.dev/popthehood/terms');
           }}
+          accessibilityLabel="Terms of Service"
+          accessibilityRole="link"
         >
           <Text style={styles.termsButtonText}>Terms of Service</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.termsButton}
           onPress={() => {
-            // Open privacy policy
-            Alert.alert('Privacy Policy', 'Privacy policy URL would go here');
+            Linking.openURL('https://apexoptimal.dev/popthehood/privacy');
           }}
+          accessibilityLabel="Privacy Policy"
+          accessibilityRole="link"
         >
           <Text style={styles.termsButtonText}>Privacy Policy</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   content: {
     paddingBottom: 32,
@@ -491,18 +567,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#2d2d2d',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   backButton: {
     padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
     flex: 1,
     textAlign: 'center',
   },
@@ -516,45 +595,49 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   loadingText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginTop: 16,
     fontSize: 14,
   },
   introSection: {
     alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#2d2d2d',
-    margin: 16,
-    borderRadius: 12,
+    padding: theme.spacing.xxl,
+    backgroundColor: theme.colors.surface,
+    margin: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
+  },
+  proHeroImage: {
+    width: 220,
+    height: 220,
+    marginBottom: 8,
+    borderRadius: 24,
   },
   introTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#ffffff',
+    ...theme.typography.h2,
+    color: theme.colors.textPrimary,
     marginTop: 16,
     marginBottom: 8,
   },
   introText: {
-    fontSize: 16,
-    color: '#b0b0b0',
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
   featuresSection: {
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
+    padding: theme.spacing.lg,
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   featuresTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
     marginBottom: 16,
   },
   featureItem: {
@@ -563,9 +646,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 12,
   },
+  featureEmoji: {
+    fontSize: 20,
+    width: 28,
+    textAlign: 'center',
+  },
   featureText: {
-    fontSize: 16,
-    color: '#e0e0e0',
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
     flex: 1,
   },
   packagesSection: {
@@ -574,34 +662,31 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   packagesTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
     marginBottom: 16,
   },
   packageCard: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     padding: 20,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   packageCardFeatured: {
-    borderColor: '#0066cc',
-    backgroundColor: '#1a3a5c',
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primaryDark,
   },
   featuredBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: '#0066cc',
+    alignSelf: 'flex-end',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   featuredBadgeText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -614,26 +699,43 @@ const styles = StyleSheet.create({
   packageTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   packagePrice: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#0066cc',
+    color: theme.colors.primary,
   },
   packageDescription: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   purchasingIndicator: {
     marginTop: 12,
   },
+  rcPaywallSection: {
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  rcPaywallTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  rcPaywallSubtitle: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
   paywallButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 12,
@@ -641,7 +743,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   paywallButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -655,7 +757,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   restoreButtonText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -664,37 +766,35 @@ const styles = StyleSheet.create({
   },
   proBadge: {
     alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
-    marginBottom: 16,
+    padding: theme.spacing.xxl,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   proBadgeTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#4dff4d',
+    ...theme.typography.h2,
+    color: theme.colors.successBright,
     marginTop: 16,
     marginBottom: 8,
   },
   proBadgeText: {
-    fontSize: 16,
-    color: '#b0b0b0',
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   subscriptionInfoCard: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   subscriptionInfoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
     marginBottom: 12,
   },
   subscriptionInfoRow: {
@@ -703,25 +803,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subscriptionInfoLabel: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   subscriptionInfoValue: {
-    fontSize: 14,
-    color: '#ffffff',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
   customerCenterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     padding: 16,
     borderRadius: 12,
     gap: 8,
   },
   customerCenterButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -730,17 +830,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noPackagesText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
+  },
+  legalLinksRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  legalLinkText: {
+    color: theme.colors.primary,
+    fontSize: 13,
+    textDecorationLine: 'underline',
+  },
+  legalLinkSeparator: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
   },
   footer: {
     padding: 16,
     marginTop: 16,
   },
   footerText: {
-    fontSize: 12,
-    color: '#909090',
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
     textAlign: 'center',
     marginBottom: 16,
     lineHeight: 18,
@@ -750,7 +867,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   termsButtonText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 14,
     textDecorationLine: 'underline',
   },

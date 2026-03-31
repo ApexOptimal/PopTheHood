@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 /**
  * "Pit Stop" - No mileage found. Ask: "Is this a parts haul or a shop visit?"
@@ -14,20 +15,20 @@ export default function ReceiptConfidenceModal({ visible, onParts, onService, on
           <Text style={styles.title}>What kind of receipt is this?</Text>
           <Text style={styles.subtitle}>We didn’t see a mileage reading. Choose the best match.</Text>
           <TouchableOpacity style={[styles.option, styles.optionParts]} onPress={onParts} activeOpacity={0.8}>
-            <Ionicons name="cube" size={24} color="#0066cc" />
+            <Ionicons name="cube" size={24} color={theme.colors.primary} />
             <View style={styles.optionTextBlock}>
               <Text style={styles.optionTitle}>Parts purchase</Text>
               <Text style={styles.optionHint}>Parts haul — add to inventory or log as maintenance</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#0066cc" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.option, styles.optionService]} onPress={onService} activeOpacity={0.8}>
-            <Ionicons name="construct" size={24} color="#0066cc" />
+            <Ionicons name="construct" size={24} color={theme.colors.primary} />
             <View style={styles.optionTextBlock}>
               <Text style={styles.optionTitle}>Shop / service visit</Text>
               <Text style={styles.optionHint}>Service record — we’ll prefill the maintenance form</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#0066cc" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancel} onPress={onCancel}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -41,13 +42,13 @@ export default function ReceiptConfidenceModal({ visible, onParts, onService, on
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   card: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -56,13 +57,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -73,15 +74,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
     gap: 12,
   },
   optionParts: {
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
     backgroundColor: 'rgba(0,102,204,0.1)',
   },
   optionService: {
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
     backgroundColor: 'rgba(0,102,204,0.1)',
   },
   optionTextBlock: {
@@ -90,11 +91,11 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.textPrimary,
   },
   optionHint: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   cancel: {
@@ -104,6 +105,6 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 15,
-    color: '#888',
+    color: theme.colors.textTertiary,
   },
 });

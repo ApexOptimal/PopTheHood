@@ -6,6 +6,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as FileSystem from 'expo-file-system/legacy';
 import { lookupBarcode } from './barcodeLookup';
+import logger from './logger';
+import { getEnv } from './env';
 
 // Initialize Gemini AI
 let genAI = null;
@@ -16,19 +18,16 @@ let genAI = null;
 function initializeGemini() {
   if (genAI) return genAI;
   
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'AIzaSyBzAu4NKdof4KI2jCzHxnjxpuAI4Fu67-A';
-  
-  console.log('🔑 Initializing Gemini API...');
-  console.log('API Key present:', !!apiKey);
-  console.log('API Key length:', apiKey ? apiKey.length : 0);
-  console.log('API Key starts with:', apiKey ? apiKey.substring(0, 10) + '...' : 'none');
-  
+  const apiKey = getEnv('EXPO_PUBLIC_GEMINI_API_KEY');
+
+  if (__DEV__) console.log('Initializing Gemini API...');
+
   if (!apiKey) {
-    throw new Error('Gemini API key is missing. Please set EXPO_PUBLIC_GEMINI_API_KEY environment variable.');
+    throw new Error('Gemini API key is missing. Please set EXPO_PUBLIC_GEMINI_API_KEY in your .env file.');
   }
   
   genAI = new GoogleGenerativeAI(apiKey);
-  console.log('✅ Gemini API initialized');
+  if (__DEV__) console.log('Gemini API initialized');
   return genAI;
 }
 
@@ -57,7 +56,7 @@ async function imageToBase64(imagePath) {
     
     return cleanBase64;
   } catch (error) {
-    console.error('Error converting image to base64:', error);
+    logger.error('Error converting image to base64:', error);
     throw new Error(`Failed to read image file: ${error.message || error.toString()}`);
   }
 }
@@ -68,25 +67,29 @@ async function imageToBase64(imagePath) {
  */
 export async function listAvailableModels() {
   try {
-    const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'AIzaSyBzAu4NKdof4KI2jCzHxnjxpuAI4Fu67-A';
+    const apiKey = getEnv('EXPO_PUBLIC_GEMINI_API_KEY');
+    if (!apiKey) {
+      if (__DEV__) console.warn('Cannot list models: EXPO_PUBLIC_GEMINI_API_KEY is not set.');
+      return [];
+    }
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
     const data = await response.json();
     
     if (data.models) {
-      console.log('📋 Available models:');
+      if (__DEV__) console.log('📋 Available models:');
       data.models.forEach(model => {
-        console.log(`  - ${model.name} (${model.displayName || 'No display name'})`);
+        if (__DEV__) console.log(`  - ${model.name} (${model.displayName || 'No display name'})`);
         if (model.supportedGenerationMethods) {
-          console.log(`    Methods: ${model.supportedGenerationMethods.join(', ')}`);
+          if (__DEV__) console.log(`    Methods: ${model.supportedGenerationMethods.join(', ')}`);
         }
       });
       return data.models;
     } else {
-      console.warn('No models found in response:', data);
+      if (__DEV__) console.warn('No models found in response:', data);
       return [];
     }
   } catch (error) {
-    console.error('Error listing models:', error);
+    logger.error('Error listing models:', error);
     return [];
   }
 }
@@ -97,16 +100,16 @@ export async function listAvailableModels() {
  * @returns {Promise<Object>} Product information with name, category, unit, and description
  */
 export async function identifyItemFromImage(imagePath) {
-  console.log('🔍 === identifyItemFromImage called ===');
-  console.log('📁 Image path:', imagePath);
+  if (__DEV__) console.log('🔍 === identifyItemFromImage called ===');
+  if (__DEV__) console.log('📁 Image path:', imagePath);
   
   try {
     // Initialize Gemini
-    console.log('🔧 Initializing Gemini AI...');
+    if (__DEV__) console.log('🔧 Initializing Gemini AI...');
     const ai = initializeGemini();
     
     // First, try to list available models to see what we can actually use
-    console.log('🔍 Checking available models...');
+    if (__DEV__) console.log('🔍 Checking available models...');
     const availableModels = await listAvailableModels();
     
     // Find a model that supports generateContent
@@ -119,17 +122,17 @@ export async function identifyItemFromImage(imagePath) {
       if (generateContentModel) {
         // Extract just the model name (remove 'models/' prefix if present)
         modelName = generateContentModel.name.replace('models/', '');
-        console.log('✅ Found available model:', modelName);
+        if (__DEV__) console.log('✅ Found available model:', modelName);
       } else {
-        console.warn('⚠️ No model found with generateContent support, using default:', modelName);
+        if (__DEV__) console.warn('⚠️ No model found with generateContent support, using default:', modelName);
       }
     } else {
-      console.warn('⚠️ Could not list models, using default:', modelName);
+      if (__DEV__) console.warn('⚠️ Could not list models, using default:', modelName);
     }
     
-    console.log('Using model:', modelName);
+    if (__DEV__) console.log('Using model:', modelName);
     const model = ai.getGenerativeModel({ model: modelName });
-    console.log('✅ Model object created');
+    if (__DEV__) console.log('✅ Model object created');
 
     // Verify file exists
     const fileInfo = await FileSystem.getInfoAsync(imagePath);
@@ -205,51 +208,30 @@ Respond ONLY with a valid JSON object in this exact format:
         },
       ];
       
-      console.log('Calling generateContent with parts array');
-      result = await model.generateContent(parts);
-      console.log('generateContent succeeded');
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Image analysis timed out. Please check your connection and try again.')), 30000)
+      );
+      result = await Promise.race([model.generateContent(parts), timeout]);
     } catch (error) {
-      console.error('❌ generateContent failed:', error);
-      console.error('❌ Error type:', error?.constructor?.name);
-      console.error('❌ Error message:', error?.message);
-      console.error('❌ Error name:', error?.name);
-      console.error('❌ Error stack:', error?.stack);
-      console.error('❌ Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-        mimeType: mimeType,
-        base64Length: imageBase64 ? imageBase64.length : 0,
-        cause: error?.cause,
-      });
-      
-      // Check if it's the specific "images" error
+      if (__DEV__) console.error('generateContent failed:', error.message);
+
       const errorMsg = error.message || error.toString() || 'Unknown error';
-      console.error('❌ Error message (string):', errorMsg);
-      
+
       if (errorMsg.includes('images') || errorMsg.includes('undefined')) {
-        // This might be a library bug - try alternative approach
-        console.log('Attempting alternative format with string prompt');
+        // Library bug workaround - try alternative format
         try {
-          // Alternative: Try with prompt as string first, then image
-          result = await model.generateContent([
+          const timeout2 = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Image analysis timed out.')), 30000)
+          );
+          result = await Promise.race([model.generateContent([
             prompt,
-            {
-              inlineData: {
-                data: imageBase64,
-                mimeType: mimeType,
-              },
-            },
-          ]);
-          console.log('Alternative format succeeded');
+            { inlineData: { data: imageBase64, mimeType } },
+          ]), timeout2]);
         } catch (altError) {
-          console.error('Alternative format also failed:', altError.message);
-          console.error('Alternative error details:', altError);
-          throw altError; // Re-throw to be caught by outer catch
+          throw altError;
         }
       } else {
-        throw error; // Re-throw to be caught by outer catch with better error handling
+        throw error;
       }
     }
 
@@ -261,14 +243,14 @@ Respond ONLY with a valid JSON object in this exact format:
       }
       
       if (!result.response) {
-        console.error('Result structure:', Object.keys(result));
+        logger.error('Result structure:', Object.keys(result));
         throw new Error('No response property in result');
       }
       
       response = result.response;
     } catch (responseError) {
-      console.error('Error accessing response:', responseError);
-      console.error('Result object:', result ? Object.keys(result) : 'null');
+      logger.error('Error accessing response:', responseError);
+      logger.error('Result object:', result ? Object.keys(result) : 'null');
       throw new Error(`Failed to get response from API: ${responseError.message}`);
     }
     
@@ -293,9 +275,9 @@ Respond ONLY with a valid JSON object in this exact format:
         throw new Error('Unexpected response structure from Gemini API');
       }
     } catch (textError) {
-      console.error('Error extracting text from response:', textError);
-      console.error('Response structure:', response ? Object.keys(response) : 'null');
-      console.error('Response type:', typeof response);
+      logger.error('Error extracting text from response:', textError);
+      logger.error('Response structure:', response ? Object.keys(response) : 'null');
+      logger.error('Response type:', typeof response);
       throw new Error(`Could not extract text from Gemini response: ${textError.message}`);
     }
     
@@ -328,39 +310,19 @@ Respond ONLY with a valid JSON object in this exact format:
     };
 
   } catch (error) {
-    console.error('❌ ========== Gemini AI identification error ==========');
-    console.error('Error type:', error?.constructor?.name);
-    console.error('Error message:', error?.message);
-    console.error('Error name:', error?.name);
-    console.error('Error stack:', error?.stack);
-    console.error('Full error:', error);
-    console.error('Error toString:', error?.toString());
-    if (error?.cause) {
-      console.error('Error cause:', error.cause);
-    }
-    console.error('=======================================================');
-    
     // Provide helpful error messages
     const errorMsg = error?.message || error?.toString() || 'Unknown error';
     const errorMsgLower = errorMsg.toLowerCase();
-    
-    console.log('Checking error type...');
-    console.log('Error message (lowercase):', errorMsgLower);
-    
+
     if (errorMsgLower.includes('api key') || errorMsgLower.includes('401') || errorMsgLower.includes('403') || errorMsgLower.includes('unauthorized')) {
-      console.log('Detected: API key error');
       throw new Error('Gemini API key is missing or invalid. Please check your configuration.');
     } else if (errorMsgLower.includes('image') || errorMsgLower.includes('images') || errorMsgLower.includes('inlinedata')) {
-      console.log('Detected: Image format error');
       throw new Error('Could not process image. The image format may be invalid. Please try taking another photo.');
     } else if (errorMsgLower.includes('quota') || errorMsgLower.includes('rate limit') || errorMsgLower.includes('429') || errorMsgLower.includes('too many')) {
-      console.log('Detected: Rate limit error');
       throw new Error('API rate limit exceeded. Please try again in a moment.');
     } else if (errorMsgLower.includes('network') || errorMsgLower.includes('fetch') || errorMsgLower.includes('connection') || errorMsgLower.includes('econnrefused') || errorMsgLower.includes('timeout')) {
-      console.log('Detected: Network error');
       throw new Error(`Network error: ${errorMsg}. Please check your internet connection and try again.`);
     } else {
-      console.log('Detected: Unknown error');
       throw new Error(`AI identification failed: ${errorMsg}`);
     }
   }
@@ -422,8 +384,8 @@ function extractInfoFromText(text) {
  * @returns {Promise<string>} VIN number (17 characters)
  */
 export async function extractVINFromImage(imagePath) {
-  console.log('🔍 === extractVINFromImage called ===');
-  console.log('📁 Image path:', imagePath);
+  if (__DEV__) console.log('🔍 === extractVINFromImage called ===');
+  if (__DEV__) console.log('📁 Image path:', imagePath);
   
   try {
     // Initialize Gemini
@@ -487,7 +449,10 @@ Respond ONLY with the 17-character VIN code in uppercase, nothing else. If you c
       },
     ];
     
-    const result = await model.generateContent(parts);
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('VIN scan timed out. Please check your connection and try again.')), 30000)
+    );
+    const result = await Promise.race([model.generateContent(parts), timeout]);
     const response = await result.response;
     
     // Extract text from response
@@ -514,14 +479,14 @@ Respond ONLY with the 17-character VIN code in uppercase, nothing else. If you c
     
     if (vinMatch) {
       const vin = vinMatch[0].toUpperCase();
-      console.log('✅ VIN extracted:', vin);
+      if (__DEV__) console.log('✅ VIN extracted:', vin);
       return vin;
     } else {
       throw new Error('No valid VIN found in image');
     }
     
   } catch (error) {
-    console.error('VIN extraction error:', error);
+    logger.error('VIN extraction error:', error);
     throw error;
   }
 }

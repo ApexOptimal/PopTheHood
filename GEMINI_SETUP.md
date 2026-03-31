@@ -25,7 +25,7 @@ This app uses Google Gemini AI (gemini-1.5-flash model) to identify products fro
 
 2. Add your Gemini API key to the `.env` file:
    ```
-   EXPO_PUBLIC_GEMINI_API_KEY=AIzaSyBzAu4NKdof4KI2jCzHxnjxpuAI4Fu67-A
+   EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
 3. **Important:** Make sure `.env` is in your `.gitignore` file to keep your API key secure.

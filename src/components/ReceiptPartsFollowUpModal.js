@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 /**
  * "Diversion" - Parts selected. Option A: Stock the Shelves (Inventory). Option B: Install Now (maintenance form).
@@ -19,20 +20,20 @@ export default function ReceiptPartsFollowUpModal({
           <Text style={styles.title}>What would you like to do?</Text>
           <Text style={styles.subtitle}>Add parts to inventory or log the work as maintenance.</Text>
           <TouchableOpacity style={styles.option} onPress={onAddToInventory} activeOpacity={0.8}>
-            <Ionicons name="cube-outline" size={24} color="#0066cc" />
+            <Ionicons name="cube-outline" size={24} color={theme.colors.primary} />
             <View style={styles.optionTextBlock}>
               <Text style={styles.optionTitle}>Stock the Shelves</Text>
               <Text style={styles.optionHint}>Add parts to Inventory</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#0066cc" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.option} onPress={onInstallNow} activeOpacity={0.8}>
-            <Ionicons name="construct-outline" size={24} color="#0066cc" />
+            <Ionicons name="construct-outline" size={24} color={theme.colors.primary} />
             <View style={styles.optionTextBlock}>
               <Text style={styles.optionTitle}>Completing maintenance work now?</Text>
               <Text style={styles.optionHint}>Port data to the maintenance form</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#0066cc" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancel} onPress={onCancel}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -46,13 +47,13 @@ export default function ReceiptPartsFollowUpModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   card: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -61,13 +62,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
     backgroundColor: 'rgba(0,102,204,0.1)',
     gap: 12,
   },
@@ -88,11 +89,11 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.textPrimary,
   },
   optionHint: {
     fontSize: 12,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   cancel: {
@@ -102,6 +103,6 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 15,
-    color: '#888',
+    color: theme.colors.textTertiary,
   },
 });

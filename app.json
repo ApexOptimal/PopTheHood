@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pop the Hood",
     "slug": "garage-assistant",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "scheme": "popthehood",
     "orientation": "portrait",
     "newArchEnabled": true,
@@ -21,7 +21,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.popthehood.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "Pop the Hood"
       }
     },
     "android": {
@@ -31,7 +32,6 @@
       },
       "package": "com.popthehood.app",
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
       ]
     },
@@ -39,6 +39,7 @@
       "favicon": "./assets/icon.png"
     },
     "plugins": [
+      "expo-apple-authentication",
       "expo-dev-client",
       [
         "expo-image-picker",
@@ -57,6 +58,14 @@
         {
           "color": "#0066cc"
         }
+      ],
+      "expo-web-browser",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "apex-optimal",
+          "project": "pop-the-hood"
+        }
       ]
     ],
     "extra": {
@@ -64,6 +73,7 @@
         "projectId": "0a24e4bd-4199-4cd2-b77b-5f6694503d9d"
       }
     },
-    "owner": "lgassen231"
+    "owner": "lgassen231",
+    "privacyUrl": "https://apexoptimal.dev/popthehood/privacy"
   }
 }

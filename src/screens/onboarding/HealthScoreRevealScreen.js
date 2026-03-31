@@ -17,6 +17,7 @@ export default function HealthScoreRevealScreen({
   vehicleData,
   baselineData,
   hasVehicle,
+  persona,
   onEnterGarage,
   onAddAnother,
   onBack,
@@ -75,7 +76,12 @@ export default function HealthScoreRevealScreen({
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={onBack}
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+        >
           <Ionicons name="arrow-back" size={24} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
@@ -142,6 +148,34 @@ export default function HealthScoreRevealScreen({
               <Text style={styles.disclaimer}>
                 This is an estimated score based on limited data. Add maintenance records to improve accuracy.
               </Text>
+
+              {/* Pro Features Teaser */}
+              <Animated.View style={[styles.proTeaser, { opacity: factorsAnim }]}>
+                <View style={styles.proTeaserHeader}>
+                  <Ionicons name="star" size={16} color={theme.colors.primary} />
+                  <Text style={styles.proTeaserTitle}>With Pop the Hood Pro</Text>
+                </View>
+                <View style={styles.proTeaserItem}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.proTeaserText}>
+                    Ask Stoich, your AI Mechanic — knows your vehicle, history, and mods
+                  </Text>
+                </View>
+                <View style={styles.proTeaserItem}>
+                  <Ionicons name="document-text-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.proTeaserText}>
+                    Export clean PDF service reports to increase resale value
+                  </Text>
+                </View>
+                {persona === 'project' && (
+                  <View style={styles.proTeaserItem}>
+                    <Ionicons name="construct-outline" size={18} color={theme.colors.primary} />
+                    <Text style={styles.proTeaserText}>
+                      Include your modifications in exports to showcase your mods
+                    </Text>
+                  </View>
+                )}
+              </Animated.View>
             </>
           ) : (
             <>
@@ -158,13 +192,23 @@ export default function HealthScoreRevealScreen({
           )}
 
           <Animated.View style={[styles.actionsSection, { opacity: factorsAnim }]}>
-            <TouchableOpacity style={styles.primaryButton} onPress={onEnterGarage}>
+            <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={onEnterGarage}
+            accessibilityLabel="Enter Your Garage"
+            accessibilityRole="button"
+          >
               <Ionicons name="home" size={20} color={theme.colors.textPrimary} />
               <Text style={styles.primaryButtonText}>Enter Your Garage</Text>
             </TouchableOpacity>
 
             {hasVehicle && (
-              <TouchableOpacity style={styles.secondaryButton} onPress={onAddAnother}>
+              <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={onAddAnother}
+              accessibilityLabel="Add another vehicle"
+              accessibilityRole="button"
+            >
                 <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
                 <Text style={styles.secondaryButtonText}>Add Another Vehicle</Text>
               </TouchableOpacity>
@@ -275,7 +319,38 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     color: theme.colors.textMuted,
     textAlign: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  proTeaser: {
+    width: '100%',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
     marginBottom: theme.spacing.xxl,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '33',
+  },
+  proTeaserHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  proTeaserTitle: {
+    ...theme.typography.h4,
+    color: theme.colors.primary,
+  },
+  proTeaserItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  proTeaserText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
+    flex: 1,
+    lineHeight: 20,
   },
   noVehicleContainer: {
     alignItems: 'center',

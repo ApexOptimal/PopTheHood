@@ -28,3 +28,13 @@ dist-ssr
 # Environment variables
 .env
 .env.local
+
+# Android release signing (do not commit)
+android/app/keystore.properties
+android/app/popthehood.keystore
+
+# Claude Code worktrees (may contain old keys)
+.claude/worktrees/
+
+# Local credentials
+credentials.sh

@@ -24,7 +24,7 @@ const PERSONAS = [
     title: 'The Track / Autocrosser',
     icon: 'speedometer-outline',
     description: 'Tire heat cycles, brake fluid boiling points, and alignment specs',
-    details: 'Build sheet focus, torque specs, performance fluid recommendations, and track day logs.',
+    details: 'Modifications focus, torque specs, performance fluid recommendations, and track day logs.',
   },
   {
     key: 'project',
@@ -60,7 +60,12 @@ export default function PersonaSelectScreen({ onSelect, onBack }) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={onBack}
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+        >
           <Ionicons name="arrow-back" size={24} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
@@ -87,6 +92,8 @@ export default function PersonaSelectScreen({ onSelect, onBack }) {
                 ]}
                 onPress={() => setSelected(persona.key)}
                 activeOpacity={0.7}
+                accessibilityLabel={`Select ${persona.title}: ${persona.description}`}
+                accessibilityRole="button"
               >
                 <View style={[styles.personaIconCircle, selected === persona.key && styles.personaIconSelected]}>
                   <Ionicons
@@ -114,6 +121,8 @@ export default function PersonaSelectScreen({ onSelect, onBack }) {
           style={[styles.continueButton, !selected && styles.continueButtonDisabled]}
           onPress={handleContinue}
           disabled={!selected}
+          accessibilityLabel="Continue"
+          accessibilityRole="button"
         >
           <Text style={styles.continueButtonText}>Continue</Text>
           <Ionicons name="arrow-forward" size={20} color={theme.colors.textPrimary} />

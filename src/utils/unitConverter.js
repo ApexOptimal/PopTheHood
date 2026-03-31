@@ -15,6 +15,7 @@ const FT_LB_TO_NM = 1.35582;
 const NM_TO_FT_LB = 1 / FT_LB_TO_NM;
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from './logger';
 
 // Cache for synchronous access
 // Default to 'imperial' immediately, will be updated from AsyncStorage if different
@@ -32,7 +33,7 @@ const initializeUnitSystemCache = async () => {
     }
     unitSystemCacheInitialized = true;
   } catch (error) {
-    console.error('Error loading unit system:', error);
+    logger.error('Error loading unit system:', error);
     // Keep default 'imperial' on error
     unitSystemCacheInitialized = true;
   }
@@ -71,7 +72,7 @@ export async function setUnitSystem(system) {
       unitSystemCache = system;
       await AsyncStorage.setItem('unitSystem', system);
     } catch (error) {
-      console.error('Error saving unit system:', error);
+      logger.error('Error saving unit system:', error);
     }
   }
 }

@@ -20,6 +20,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getBuildSheet, hasModifications, getRelevantModifications } from '../utils/buildSheet';
 import { getVehicleContext, extractSuspectedRecentWork, buildOptimizedForumQuery } from '../utils/vehicleContext';
 import { listAvailableModels } from '../utils/visionAI';
+import { theme } from '../theme';
+import logger from '../utils/logger';
+import { getEnv } from '../utils/env';
+import { requireNetwork } from '../utils/network';
+import { checkRateLimit, recordCall } from '../utils/rateLimit';
 
 // Initialize Gemini AI
 let genAI = null;
@@ -27,11 +32,10 @@ let genAI = null;
 function initializeGemini() {
   if (genAI) return genAI;
   
-  // Use the same API key pattern as visionAI.js
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'AIzaSyBzAu4NKdof4KI2jCzHxnjxpuAI4Fu67-A';
-  
+  const apiKey = getEnv('EXPO_PUBLIC_GEMINI_API_KEY');
+
   if (!apiKey) {
-    throw new Error('Gemini API key is missing. Please set EXPO_PUBLIC_GEMINI_API_KEY environment variable.');
+    throw new Error('Gemini API key is missing. Please set EXPO_PUBLIC_GEMINI_API_KEY in your .env file.');
   }
   
   genAI = new GoogleGenerativeAI(apiKey);
@@ -48,6 +52,8 @@ export default function DiagnosticScreen({ appContext, navigation }) {
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
   const insets = useSafeAreaInsets();
 
+  const isPro = appContext?.isPro;
+  const proLoading = appContext?.proLoading;
   const vehicles = appContext?.vehicles || [];
 
   // Auto-select first vehicle when vehicles change
@@ -61,6 +67,74 @@ export default function DiagnosticScreen({ appContext, navigation }) {
       setSelectedVehicleId(null);
     }
   }, [vehicles]);
+
+  // Show loading while Pro status is being determined
+  if (proLoading) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <View style={styles.lockedContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // If not pro, render locked state
+  if (!isPro) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <ScrollView contentContainerStyle={styles.lockedContainer}>
+            <Ionicons name="construct" size={64} color={theme.colors.primary} />
+            <Text style={styles.lockedTitle}>Stoich AI Mechanic</Text>
+            <Text style={styles.lockedMessage}>
+              Upgrade to Pro to access AI-powered diagnostics
+            </Text>
+
+            <View style={styles.lockedFeatureCard}>
+              <Text style={styles.lockedFeatureHeading}>Intelligent, Vehicle-Aware Diagnostics</Text>
+              <Text style={styles.lockedFeatureDescription}>
+                The Stoich AI Mechanic doesn't just give generic answers — it automatically factors in your vehicle's unique profile to deliver precise troubleshooting.
+              </Text>
+              <View style={styles.lockedFeatureList}>
+                <View style={styles.lockedFeatureItem}>
+                  <Ionicons name="speedometer-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.lockedFeatureText}>Current mileage and wear patterns</Text>
+                </View>
+                <View style={styles.lockedFeatureItem}>
+                  <Ionicons name="document-text-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.lockedFeatureText}>Full maintenance history and service records</Text>
+                </View>
+                <View style={styles.lockedFeatureItem}>
+                  <Ionicons name="build-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.lockedFeatureText}>Recent repairs and work performed</Text>
+                </View>
+                <View style={styles.lockedFeatureItem}>
+                  <Ionicons name="swap-horizontal-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.lockedFeatureText}>Aftermarket parts and modifications</Text>
+                </View>
+              </View>
+              <Text style={styles.lockedFeatureFootnote}>
+                Every diagnostic response is tailored to your exact build — not a one-size-fits-all answer.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => navigation?.navigate('Subscription')}
+              activeOpacity={0.7}
+              accessibilityLabel="Upgrade to Pro"
+              accessibilityRole="button"
+            >
+              <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   // Get selected vehicle object
   const getVehicle = () => {
@@ -86,7 +160,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
     return null;
   };
 
-  // Get build sheet for current vehicle
+  // Get combined modifications string for current vehicle
   const getVehicleBuildSheet = () => {
     const vehicle = getVehicle();
     if (!vehicle) return '';
@@ -242,6 +316,12 @@ export default function DiagnosticScreen({ appContext, navigation }) {
     const userMessage = inputText.trim();
     if (!userMessage || loading) return;
 
+    const limit = checkRateLimit('ai-diagnostic', { cooldownMs: 2000, dailyLimit: 60 });
+    if (!limit.allowed) {
+      Alert.alert('Slow Down', limit.reason);
+      return;
+    }
+
     // Add user message
     const newUserMessage = {
       id: Date.now().toString(),
@@ -249,13 +329,16 @@ export default function DiagnosticScreen({ appContext, navigation }) {
       isUser: true,
       timestamp: new Date(),
     };
-    
+
     setMessages(prev => [...prev, newUserMessage]);
     setInputText('');
     setLoading(true);
     scrollToBottom();
 
     try {
+      await requireNetwork('AI diagnostics');
+      recordCall('ai-diagnostic');
+
       // Initialize Gemini
       const ai = initializeGemini();
       
@@ -281,7 +364,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
           if (proModel) {
             // Extract model name (remove 'models/' prefix if present)
             modelName = proModel.name.replace('models/', '');
-            console.log('✅ Using Pro model for diagnostics:', modelName);
+            logger.log('✅ Using Pro model for diagnostics:', modelName);
           } else {
             // Fallback to any model that supports generateContent
             const anyModel = availableModels.find(m => 
@@ -290,12 +373,12 @@ export default function DiagnosticScreen({ appContext, navigation }) {
             );
             if (anyModel) {
               modelName = anyModel.name.replace('models/', '');
-              console.log('⚠️ Using available model:', modelName);
+              logger.log('⚠️ Using available model:', modelName);
             }
           }
         }
       } catch (modelError) {
-        console.warn('Could not list models, will try fallbacks:', modelError);
+        logger.warn('Could not list models, will try fallbacks:', modelError);
       }
       
       // If no model found, try fallback models in order
@@ -304,7 +387,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
           try {
             const testModel = ai.getGenerativeModel({ model: fallback });
             modelName = fallback;
-            console.log('✅ Using fallback model:', modelName);
+            logger.log('✅ Using fallback model:', modelName);
             break;
           } catch (e) {
             // Try next fallback
@@ -373,7 +456,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
       setMessages(prev => [...prev, aiMessage]);
       scrollToBottom();
     } catch (error) {
-      console.error('Error calling Gemini API:', error);
+      logger.error('Error calling Gemini API:', error);
       
       let errorMessage = 'Unable to get diagnosis. ';
       if (error.message?.includes('API key')) {
@@ -482,7 +565,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
     const searchUrl = `https://www.google.com/search?q=${siteFilters}+${encodedQuery}`;
     
     Linking.openURL(searchUrl).catch(err => {
-      console.error('Error opening browser:', err);
+      logger.error('Error opening browser:', err);
       Alert.alert('Error', 'Unable to open browser. Please check your internet connection.');
     });
   };
@@ -497,7 +580,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Ionicons name="construct" size={24} color="#0066cc" />
+            <Ionicons name="construct" size={24} color={theme.colors.primary} />
             <Text style={styles.headerTitle}>AI Mechanic</Text>
           </View>
           <View style={styles.headerActions}>
@@ -506,8 +589,10 @@ export default function DiagnosticScreen({ appContext, navigation }) {
               style={styles.warningLightsButton}
               onPress={() => navigation?.navigate('WarningLights')}
               activeOpacity={0.7}
+              accessibilityLabel="Warning lights reference"
+              accessibilityRole="button"
             >
-              <Ionicons name="warning" size={18} color="#0066cc" />
+              <Ionicons name="warning" size={18} color={theme.colors.primary} />
               <Text style={styles.warningLightsButtonText}>Lights</Text>
             </TouchableOpacity>
           </View>
@@ -518,6 +603,8 @@ export default function DiagnosticScreen({ appContext, navigation }) {
           <View style={styles.vehicleSelectorContainer}>
             <TouchableOpacity
               style={styles.vehicleSelectorButton}
+              accessibilityLabel={getVehicleInfo() ? `Select vehicle, current: ${getVehicleInfo()}` : 'Select vehicle'}
+              accessibilityRole="button"
               onPress={() => {
                 const vehicleOptions = vehicles.map(v => ({
                   label: `${v.year || ''} ${v.make || ''} ${v.model || ''}${v.trim ? ` ${v.trim}` : ''}`.trim() || 'Unnamed Vehicle',
@@ -543,11 +630,11 @@ export default function DiagnosticScreen({ appContext, navigation }) {
               }}
               activeOpacity={0.7}
             >
-              <Ionicons name="car" size={18} color="#0066cc" />
+              <Ionicons name="car" size={18} color={theme.colors.primary} />
               <Text style={styles.vehicleSelectorText}>
                 {getVehicleInfo() || 'Select Vehicle'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#b0b0b0" />
+              <Ionicons name="chevron-down" size={16} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
         )}
@@ -568,9 +655,11 @@ export default function DiagnosticScreen({ appContext, navigation }) {
               style={styles.vehicleContextContainer}
               onPress={() => setShowVehicleContext(!showVehicleContext)}
               activeOpacity={0.7}
+              accessibilityLabel={showVehicleContext ? 'Hide vehicle context' : 'Show vehicle context'}
+              accessibilityRole="button"
             >
               <View style={styles.vehicleContextHeader}>
-                <Ionicons name="information-circle" size={16} color="#0066cc" />
+                <Ionicons name="information-circle" size={16} color={theme.colors.primary} />
                 <Text style={styles.vehicleContextTitle}>
                   {hasMods && 'Modified'}
                   {hasMods && hasRecent && ' • '}
@@ -649,14 +738,14 @@ export default function DiagnosticScreen({ appContext, navigation }) {
         >
           {messages.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={64} color="#4d4d4d" />
+              <Ionicons name="chatbubbles-outline" size={64} color={theme.colors.border} />
               <Text style={styles.emptyStateTitle}>Describe Your Vehicle Issue</Text>
               <Text style={styles.emptyStateText}>
                 Tell me what's wrong with your vehicle and I'll help diagnose the problem.
               </Text>
               {getVehicleInfo() && (
                 <View style={styles.vehicleInfoBadge}>
-                  <Ionicons name="car" size={16} color="#0066cc" />
+                  <Ionicons name="car" size={16} color={theme.colors.primary} />
                   <Text style={styles.vehicleInfoText}>{getVehicleInfo()}</Text>
                 </View>
               )}
@@ -680,7 +769,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
               >
                 {!message.isUser && !message.isError && (
                   <View style={styles.aiIconContainer}>
-                    <Ionicons name="construct" size={16} color="#0066cc" />
+                    <Ionicons name="construct" size={16} color={theme.colors.primary} />
                   </View>
                 )}
                 <View style={styles.messageTextContainer}>
@@ -691,7 +780,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
               {/* Suspected Recent Work Warning */}
               {!message.isUser && !message.isError && message.suspectedWork?.hasSuspectedWork && (
                 <View style={styles.suspectedWorkWarning}>
-                  <Ionicons name="warning" size={16} color="#ffaa00" />
+                  <Ionicons name="warning" size={16} color={theme.colors.warningLight} />
                   <Text style={styles.suspectedWorkText}>
                     Recent work may be related to this issue
                   </Text>
@@ -704,8 +793,10 @@ export default function DiagnosticScreen({ appContext, navigation }) {
                   <TouchableOpacity
                     style={styles.searchButton}
                     onPress={() => handleSearchForums(message)}
+                    accessibilityLabel="Search forums"
+                    accessibilityRole="button"
                   >
-                    <Ionicons name="search" size={16} color="#fff" />
+                    <Ionicons name="search" size={16} color={theme.colors.textPrimary} />
                     <Text style={styles.searchButtonText}>Search Forums</Text>
                   </TouchableOpacity>
                 </View>
@@ -717,7 +808,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
           {loading && (
             <View style={styles.loadingContainer}>
               <View style={styles.loadingBubble}>
-                <ActivityIndicator size="small" color="#0066cc" />
+                <ActivityIndicator size="small" color={theme.colors.primary} />
                 <Text style={styles.loadingText}>Scanning...</Text>
               </View>
             </View>
@@ -735,6 +826,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
             multiline
             maxLength={500}
             editable={!loading}
+            accessibilityLabel="Describe the problem"
             onFocus={() => {
               // Scroll to bottom when input is focused
               setTimeout(() => {
@@ -746,11 +838,13 @@ export default function DiagnosticScreen({ appContext, navigation }) {
             style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}
             onPress={handleSend}
             disabled={!inputText.trim() || loading}
+            accessibilityLabel="Send message"
+            accessibilityRole="button"
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={theme.colors.textPrimary} />
             ) : (
-              <Ionicons name="send" size={20} color="#fff" />
+              <Ionicons name="send" size={20} color={theme.colors.textPrimary} />
             )}
           </TouchableOpacity>
         </View>
@@ -762,7 +856,7 @@ export default function DiagnosticScreen({ appContext, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   safeArea: {
     flex: 1,
@@ -772,10 +866,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    padding: 16,
-    backgroundColor: '#2d2d2d',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   headerContent: {
     flexDirection: 'row',
@@ -784,9 +878,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 20,
+    ...theme.typography.h3,
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   headerActions: {
     flexDirection: 'row',
@@ -795,55 +889,55 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#b0b0b0',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     marginLeft: 32,
   },
   warningLightsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 12,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 6,
-    backgroundColor: '#1a3a5c',
-    borderRadius: 16,
+    backgroundColor: theme.colors.primaryDark,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: '#0066cc33',
   },
   warningLightsButtonText: {
-    fontSize: 12,
+    ...theme.typography.caption,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
   },
   vehicleSelectorContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
-    backgroundColor: '#1a1a1a',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
   },
   vehicleSelectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   vehicleSelectorText: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   vehicleContextContainer: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderBottomColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
   },
   vehicleContextHeader: {
     flexDirection: 'row',
@@ -854,30 +948,30 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   vehicleContextDetails: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
+    borderTopColor: theme.colors.border,
   },
   vehicleContextLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
     marginTop: 4,
     marginBottom: 2,
   },
   vehicleContextText: {
-    fontSize: 12,
-    color: '#b0b0b0',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     lineHeight: 18,
   },
   vehicleContextDivider: {
     height: 1,
-    backgroundColor: '#4d4d4d',
-    marginVertical: 8,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.sm,
   },
   messagesContent: {
     padding: 16,
@@ -891,16 +985,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginTop: 16,
-    marginBottom: 8,
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   emptyStateText: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -908,17 +1001,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 16,
-    paddingHorizontal: 12,
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 6,
-    backgroundColor: '#1a3a5c',
-    borderRadius: 16,
+    backgroundColor: theme.colors.primaryDark,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: '#0066cc33',
   },
   vehicleInfoText: {
-    fontSize: 12,
-    color: '#0066cc',
+    ...theme.typography.caption,
+    color: theme.colors.primary,
     fontWeight: '500',
   },
   messageContainer: {
@@ -939,18 +1032,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   userBubble: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     borderBottomRightRadius: 4,
   },
   aiBubble: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   errorBubble: {
     backgroundColor: '#4d1a1a',
-    borderColor: '#cc0000',
+    borderColor: theme.colors.dangerDark,
     borderWidth: 1,
   },
   aiIconContainer: {
@@ -964,7 +1057,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   userMessageText: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   aiMessageText: {
     color: '#e0e0e0',
@@ -976,16 +1069,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0066cc',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 8,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    marginTop: theme.spacing.sm,
     alignSelf: 'flex-start',
   },
   searchButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
+    color: theme.colors.textPrimary,
+    ...theme.typography.bodySmall,
     fontWeight: '600',
   },
   suspectedWorkWarning: {
@@ -1022,35 +1115,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#2d2d2d',
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   loadingText: {
-    color: '#b0b0b0',
-    fontSize: 14,
+    color: theme.colors.textSecondary,
+    ...theme.typography.bodySmall,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 16,
+    padding: theme.spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 16 : 16,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#4d4d4d',
-    gap: 8,
+    borderTopColor: theme.colors.border,
+    gap: theme.spacing.sm,
   },
   input: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#ffffff',
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    color: theme.colors.textPrimary,
     fontSize: 14,
     maxHeight: 100,
     minHeight: 44,
@@ -1059,13 +1152,89 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   sendButtonDisabled: {
-    backgroundColor: '#4d4d4d',
+    backgroundColor: theme.colors.border,
     opacity: 0.5,
+  },
+  lockedContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+  lockedTitle: {
+    ...theme.typography.h2,
+    color: theme.colors.textPrimary,
+    marginTop: 20,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  lockedMessage: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  lockedFeatureCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: 20,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    width: '100%',
+  },
+  lockedFeatureHeading: {
+    ...theme.typography.body,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: 8,
+  },
+  lockedFeatureDescription: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  lockedFeatureList: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  lockedFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  lockedFeatureText: {
+    fontSize: 14,
+    color: '#e0e0e0',
+    flex: 1,
+  },
+  lockedFeatureFootnote: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    fontStyle: 'italic',
+    lineHeight: 18,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: 12,
+  },
+  upgradeButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: theme.borderRadius.md,
+  },
+  upgradeButtonText: {
+    color: theme.colors.textPrimary,
+    ...theme.typography.body,
+    fontWeight: '700',
   },
 });

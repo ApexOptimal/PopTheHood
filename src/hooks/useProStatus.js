@@ -1,22 +1,7 @@
 // Custom hook for managing Pro subscription status
 import { useState, useEffect } from 'react';
-import { Platform } from 'react-native';
-import { hasProEntitlement, getCustomerInfo, getActiveSubscriptionInfo } from '../utils/revenueCat';
-
-// TEMPORARILY DISABLED: react-native-purchases has broken internal dependency
-// See revenueCat.js for instructions on how to re-enable
-let Purchases = null;
-let isPurchasesAvailable = false;
-
-// try {
-//   if (Platform.OS !== 'web') {
-//     Purchases = require('react-native-purchases').default;
-//     isPurchasesAvailable = true;
-//   }
-// } catch (error) {
-//   console.warn('RevenueCat SDK not available:', error.message);
-//   isPurchasesAvailable = false;
-// }
+import { hasProEntitlement, getCustomerInfo, getActiveSubscriptionInfo, addCustomerInfoUpdateListener } from '../utils/revenueCat';
+import logger from '../utils/logger';
 
 export const useProStatus = () => {
   const [isPro, setIsPro] = useState(false);
@@ -28,7 +13,7 @@ export const useProStatus = () => {
       setLoading(true);
       const proStatus = await hasProEntitlement();
       setIsPro(proStatus);
-      
+
       if (proStatus) {
         const customerInfoResult = await getCustomerInfo();
         if (customerInfoResult.success) {
@@ -39,7 +24,7 @@ export const useProStatus = () => {
         setSubscriptionInfo(null);
       }
     } catch (error) {
-      console.error('Error checking Pro status:', error);
+      logger.error('Error checking Pro status:', error);
       setIsPro(false);
       setSubscriptionInfo(null);
     } finally {
@@ -50,28 +35,19 @@ export const useProStatus = () => {
   useEffect(() => {
     checkProStatus();
 
-    // Listen for customer info updates (only if RevenueCat is available)
-    if (isPurchasesAvailable && Purchases) {
-      try {
-        const customerInfoUpdateListener = Purchases.addCustomerInfoUpdateListener((customerInfo) => {
-          const proStatus = customerInfo.entitlements.active['Pop the Hood Pro'] !== undefined;
-          setIsPro(proStatus);
-          
-          if (proStatus) {
-            const subInfo = getActiveSubscriptionInfo(customerInfo);
-            setSubscriptionInfo(subInfo);
-          } else {
-            setSubscriptionInfo(null);
-          }
-        });
+    // Listen for customer info updates (uses lazy-loaded RevenueCat)
+    const removeListener = addCustomerInfoUpdateListener(({ customerInfo, isPro: proStatus }) => {
+      setIsPro(proStatus);
 
-        return () => {
-          customerInfoUpdateListener.remove();
-        };
-      } catch (error) {
-        console.warn('Error setting up RevenueCat listener:', error);
+      if (proStatus) {
+        const subInfo = getActiveSubscriptionInfo(customerInfo);
+        setSubscriptionInfo(subInfo);
+      } else {
+        setSubscriptionInfo(null);
       }
-    }
+    });
+
+    return removeListener;
   }, []);
 
   return {

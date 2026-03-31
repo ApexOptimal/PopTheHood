@@ -2,6 +2,8 @@
  * Oil Life Calculator
  * Calculates oil life percentage based on last oil change and interval
  */
+import { parseValidDate } from './serviceCalculations';
+import { theme } from '../theme';
 
 /**
  * Calculate oil life percentage for a vehicle
@@ -12,7 +14,7 @@ export function calculateOilLife(vehicle) {
   if (!vehicle) {
     return {
       percentage: null,
-      color: '#909090',
+      color: theme.colors.textMuted,
       status: 'Unknown',
       milesRemaining: null,
       needsChange: false
@@ -20,7 +22,7 @@ export function calculateOilLife(vehicle) {
   }
 
   const oilChangeInterval = vehicle.serviceIntervals?.oilChange;
-  const currentMileage = parseInt(vehicle.mileage) || 0;
+  const currentMileage = parseInt(vehicle.mileage, 10) || 0;
   const maintenanceRecords = vehicle.maintenanceRecords || [];
   const estimatedLastService = vehicle.estimatedLastService || {};
 
@@ -35,13 +37,13 @@ export function calculateOilLife(vehicle) {
       return type.includes('oil') && record.mileage !== null && record.mileage !== undefined;
     })
     .sort((a, b) => {
-      const mileageA = parseInt(a.mileage) || 0;
-      const mileageB = parseInt(b.mileage) || 0;
+      const mileageA = parseInt(a.mileage, 10) || 0;
+      const mileageB = parseInt(b.mileage, 10) || 0;
       return mileageB - mileageA; // Sort descending
     });
 
   if (oilChanges.length > 0) {
-    lastOilChangeMileage = parseInt(oilChanges[0].mileage);
+    lastOilChangeMileage = parseInt(oilChanges[0].mileage, 10);
     lastOilChangeDate = oilChanges[0].date;
   } else {
     // If no maintenance records, try to estimate from estimatedLastService
@@ -50,7 +52,7 @@ export function calculateOilLife(vehicle) {
       lastOilChangeDate = lastServiceDate;
       // Estimate mileage based on time and average driving
       const lastServiceDateObj = new Date(lastServiceDate);
-      const createdAt = vehicle.createdAt ? new Date(vehicle.createdAt) : new Date();
+      const createdAt = parseValidDate(vehicle.createdAt) || new Date();
       const daysSinceCreation = (new Date() - createdAt) / (1000 * 60 * 60 * 24);
       const daysSinceService = (new Date() - lastServiceDateObj) / (1000 * 60 * 60 * 24);
 
@@ -70,7 +72,7 @@ export function calculateOilLife(vehicle) {
   if (!oilChangeInterval || oilChangeInterval === 0) {
     return {
       percentage: null,
-      color: '#909090',
+      color: theme.colors.textMuted,
       status: 'No interval set',
       milesRemaining: null,
       needsChange: false,
@@ -83,7 +85,7 @@ export function calculateOilLife(vehicle) {
   if (lastOilChangeMileage === null) {
     return {
       percentage: 0,
-      color: '#ff4444',
+      color: theme.colors.danger,
       status: 'Needs oil change',
       milesRemaining: 0,
       needsChange: true,
@@ -102,13 +104,13 @@ export function calculateOilLife(vehicle) {
   // Determine color and status based on percentage
   let color, status;
   if (percentage > 50) {
-    color = '#00aa00'; // Green
+    color = theme.colors.successIndicator; // Green
     status = 'Good';
   } else if (percentage >= 15) {
-    color = '#ff8800'; // Orange
+    color = theme.colors.warning; // Orange
     status = 'Warning';
   } else {
-    color = '#ff4444'; // Red
+    color = theme.colors.danger; // Red
     status = 'Needs Change';
   }
 

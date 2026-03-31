@@ -1,6 +1,6 @@
 /**
- * Build Sheet / Modifications Utility
- * Extracts vehicle modifications from maintenance records and build sheet field
+ * Modifications utility (vehicle.buildSheet + maintenance-derived mods)
+ * Extracts vehicle modifications from maintenance records and the stored modifications object
  */
 
 /**
@@ -80,10 +80,10 @@ export function extractModificationsFromRecords(maintenanceRecords) {
 }
 
 /**
- * Convert build sheet object to string
+ * Convert modifications object to string
  * Handles both object format (from form) and string format
- * @param {Object|string} buildSheet - Build sheet object or string
- * @returns {string} Formatted build sheet string
+ * @param {Object|string} buildSheet - Modifications object or string (field name unchanged for sync)
+ * @returns {string} Formatted modifications string
  */
 function formatBuildSheet(buildSheet) {
   if (!buildSheet) return '';
@@ -119,17 +119,17 @@ function formatBuildSheet(buildSheet) {
 }
 
 /**
- * Get build sheet string for a vehicle
+ * Get combined modifications string for a vehicle
  * Combines manual buildSheet field with extracted modifications from records
  * @param {Object} vehicle - Vehicle object
- * @returns {string} Combined build sheet string
+ * @returns {string} Combined modifications string
  */
 export function getBuildSheet(vehicle) {
   if (!vehicle) return '';
 
   const parts = [];
 
-  // Add manual build sheet if present (handle both object and string formats)
+  // Add manual modifications if present (handle both object and string formats)
   const manualBuildSheet = formatBuildSheet(vehicle.buildSheet);
   if (manualBuildSheet) {
     parts.push(manualBuildSheet);
@@ -166,7 +166,7 @@ export function hasModifications(vehicle) {
  * Extract relevant modifications for a specific issue
  * Filters modifications that might be related to the reported problem
  * @param {string} issueDescription - User's reported issue
- * @param {string} buildSheet - Full build sheet string
+ * @param {string} buildSheet - Full modifications string (from getBuildSheet)
  * @returns {Array} Array of relevant modification strings
  */
 export function getRelevantModifications(issueDescription, buildSheet) {
@@ -204,7 +204,7 @@ export function getRelevantModifications(issueDescription, buildSheet) {
     }
   });
 
-  // Search build sheet for relevant modifications
+  // Search modifications text for relevant entries
   const buildSheetLower = buildSheet.toLowerCase();
   relevantKeywords.forEach(keyword => {
     if (buildSheetLower.includes(keyword)) {

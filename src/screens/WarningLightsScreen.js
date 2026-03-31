@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { warningLights, filterWarningLights } from '../data/warningLights';
+import { theme } from '../theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 3; // 3 columns with padding
@@ -66,15 +67,15 @@ export default function WarningLightsScreen() {
   const getIconColor = (color) => {
     switch (color) {
       case 'red':
-        return '#ff4444';
+        return theme.colors.danger;
       case 'yellow':
-        return '#ffaa00';
+        return theme.colors.warningLight;
       case 'green':
         return '#00cc66';
       case 'blue':
-        return '#0066cc';
+        return theme.colors.primary;
       default:
-        return '#ffffff';
+        return theme.colors.textPrimary;
     }
   };
 
@@ -112,6 +113,8 @@ export default function WarningLightsScreen() {
           style={styles.card}
           onPress={() => openModal(item)}
           activeOpacity={0.7}
+          accessibilityLabel={item.name}
+          accessibilityRole="button"
         >
           <View style={styles.cardIconContainer}>
             {renderIcon(item.iconName, 48, iconColor)}
@@ -131,6 +134,9 @@ export default function WarningLightsScreen() {
         style={[styles.filterPill, isActive && styles.filterPillActive]}
         onPress={() => setSelectedFilter(filter)}
         activeOpacity={0.7}
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isActive }}
       >
         <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
           {label}
@@ -144,7 +150,7 @@ export default function WarningLightsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Ionicons name="warning" size={24} color="#0066cc" />
+          <Ionicons name="warning" size={24} color={theme.colors.primary} />
           <Text style={styles.headerTitle}>Warning Lights</Text>
         </View>
         <Text style={styles.headerSubtitle}>Dashboard Symbols Reference</Text>
@@ -178,6 +184,8 @@ export default function WarningLightsScreen() {
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={closeModal}
+          accessibilityLabel="Close"
+          accessibilityRole="button"
         >
           <Animated.View
             style={[
@@ -199,8 +207,10 @@ export default function WarningLightsScreen() {
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={closeModal}
+                  accessibilityLabel="Close"
+                  accessibilityRole="button"
                 >
-                  <Ionicons name="close" size={24} color="#ffffff" />
+                  <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
 
                 {/* Large Icon */}
@@ -262,13 +272,13 @@ export default function WarningLightsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 16,
-    backgroundColor: '#2d2d2d',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   headerContent: {
     flexDirection: 'row',
@@ -277,43 +287,43 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 20,
+    ...theme.typography.h3,
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#b0b0b0',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     marginLeft: 32,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-    backgroundColor: '#2d2d2d',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
     borderRadius: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   filterPillActive: {
-    backgroundColor: '#0066cc',
-    borderColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   filterPillText: {
-    fontSize: 14,
+    ...theme.typography.bodySmall,
     fontWeight: '600',
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
   },
   filterPillTextActive: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   gridContainer: {
     padding: 16,
@@ -324,14 +334,14 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   card: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
     alignItems: 'center',
     minHeight: 120,
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   cardIconContainer: {
     flex: 1,
@@ -341,7 +351,7 @@ const styles = StyleSheet.create({
   },
   cardName: {
     fontSize: 11,
-    color: '#e0e0e0',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -351,7 +361,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
@@ -362,7 +372,11 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignSelf: 'flex-end',
-    padding: 8,
+    padding: theme.spacing.sm,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
   },
   modalIconContainer: {
@@ -370,9 +384,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
+    ...theme.typography.h2,
+    color: theme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -380,33 +393,33 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalSectionTitle: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#0066cc',
+    color: theme.colors.primary,
     marginBottom: 8,
   },
   modalDescription: {
     fontSize: 14,
-    color: '#e0e0e0',
+    color: theme.colors.textSecondary,
     lineHeight: 20,
   },
   modalActionSection: {
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#0066cc33',
+    borderColor: theme.colors.primary + '33',
   },
   modalActionSectionHigh: {
     backgroundColor: '#4d1a1a',
-    borderColor: '#ff444433',
+    borderColor: theme.colors.danger + '33',
   },
   modalSectionTitleHigh: {
     color: '#ffaaaa',
   },
   modalAction: {
-    fontSize: 14,
-    color: '#ffffff',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textPrimary,
     lineHeight: 20,
     fontWeight: '500',
   },
@@ -415,15 +428,15 @@ const styles = StyleSheet.create({
   },
   severityBadge: {
     alignSelf: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#1a1a1a',
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.background,
     marginTop: 8,
   },
   severityText: {
-    fontSize: 12,
-    color: '#b0b0b0',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
 });

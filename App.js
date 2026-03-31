@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Alert, AppState, LogBox, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Alert, AppState, LogBox, ActivityIndicator, Platform, TouchableOpacity, Pressable, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { scanReceipt } from './src/utils/receiptScanService';
 import { copyToPermanentStorage } from './src/utils/fileStorage';
@@ -16,7 +16,24 @@ import { formatDistanceWithSeparators } from './src/utils/unitConverter';
 import { recordOnboardingCompletion, startSession, saveSessionTime, shouldShowPaywall, markPaywallShown } from './src/utils/appUsageTracking';
 import { presentPaywallIfNeeded } from './src/utils/paywall';
 import * as Notifications from 'expo-notifications';
+import * as Sentry from '@sentry/react-native';
 import { initializeRevenueCat } from './src/utils/revenueCat';
+import { useProStatus } from './src/hooks/useProStatus';
+import logger from './src/utils/logger';
+import { scheduleSyncAfterWrite } from './src/utils/sync';
+import { scheduleSpecFeedback } from './src/utils/specFeedback';
+import { getCurrentUser } from './src/utils/supabase';
+import { getEnv } from './src/utils/env';
+
+try {
+  Sentry.init({
+    dsn: getEnv('EXPO_PUBLIC_SENTRY_DSN') || '',
+    tracesSampleRate: 0.2,
+    enabled: !__DEV__,
+  });
+} catch (e) {
+  // Sentry init must not crash the app
+}
 
 // Screens - we'll create these
 import VehiclesScreen from './src/screens/VehiclesScreen';
@@ -25,18 +42,21 @@ import PastDueScreen from './src/screens/PastDueScreen';
 import SavingsScreen from './src/screens/SavingsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import VehicleDetailScreen from './src/screens/VehicleDetailScreen';
-import WelcomeScreen from './src/screens/WelcomeScreen';
-import OnboardingScreen from './src/screens/OnboardingScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import DiagnosticScreen from './src/screens/DiagnosticScreen';
 import WarningLightsScreen from './src/screens/WarningLightsScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
 
 // New onboarding screens
 import QuickAddScreen from './src/screens/onboarding/QuickAddScreen';
 import MaintenanceBaselineScreen from './src/screens/onboarding/MaintenanceBaselineScreen';
 import PersonaSelectScreen from './src/screens/onboarding/PersonaSelectScreen';
 import HealthScoreRevealScreen from './src/screens/onboarding/HealthScoreRevealScreen';
+import VehiclePhotoScreen from './src/screens/onboarding/VehiclePhotoScreen';
+import NotificationsScreen from './src/screens/onboarding/NotificationsScreen';
+import AccountScreen from './src/screens/onboarding/AccountScreen';
 import { ThemeProvider, theme } from './src/theme';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { getVehicleDefaults } from './src/utils/vehicleDefaults';
 import { mapOilChangeAnswer, estimateOilChangeMileage } from './src/utils/healthScore';
 
@@ -52,6 +72,27 @@ import ReceiptPartsFollowUpModal from './src/components/ReceiptPartsFollowUpModa
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+// Deep linking config for popthehood:// URL scheme (used by Android widgets, etc.)
+const linking = {
+  prefixes: ['popthehood://'],
+  config: {
+    screens: {
+      Dashboard: 'dashboard',
+      Vehicles: {
+        path: '',
+        screens: {
+          VehiclesList: 'add-maintenance',
+          PastDue: 'past-due',
+          Settings: 'settings',
+          Subscription: 'subscription',
+        },
+      },
+      Garage: 'garage',
+      Diagnostics: 'diagnostics',
+    },
+  },
+};
 
 // Ignore customLogHandler errors (these are internal React Native/Expo logging issues)
 LogBox.ignoreLogs([
@@ -77,10 +118,10 @@ function VehiclesStack({ appContext }) {
         headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
-      <Stack.Screen 
-        name="VehiclesList" 
-        options={{ 
-          title: appContext.vehicles.length === 1 ? 'Vehicle' : 'Vehicles' 
+      <Stack.Screen
+        name="VehiclesList"
+        options={{
+          title: appContext.vehicles.length === 1 ? 'Vehicle' : 'Vehicles',
         }}
       >
         {(props) => <VehiclesScreen {...props} appContext={appContext} />}
@@ -88,14 +129,23 @@ function VehiclesStack({ appContext }) {
       <Stack.Screen name="VehicleDetail" options={{ title: 'Vehicle Details' }}>
         {(props) => <VehicleDetailScreen {...props} appContext={appContext} />}
       </Stack.Screen>
-      <Stack.Screen 
-        name="Subscription" 
-        options={{ 
+      <Stack.Screen
+        name="Subscription"
+        options={{
           title: 'Subscription',
           presentation: 'modal',
         }}
       >
         {(props) => <SubscriptionScreen {...props} appContext={appContext} />}
+      </Stack.Screen>
+      <Stack.Screen name="Settings" options={{ title: 'Settings' }}>
+        {(props) => <SettingsScreen {...props} appContext={appContext} />}
+      </Stack.Screen>
+      <Stack.Screen name="PastDue" options={{ title: 'Past Due' }}>
+        {(props) => <PastDueScreen {...props} appContext={appContext} />}
+      </Stack.Screen>
+      <Stack.Screen name="Savings" options={{ title: 'DIY Savings' }}>
+        {(props) => <SavingsScreen {...props} appContext={appContext} />}
       </Stack.Screen>
     </Stack.Navigator>
   );
@@ -130,17 +180,17 @@ function DiagnosticsStack({ appContext }) {
 }
 
 
-export default function App() {
+function App() {
+  const navigationRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [todos, setTodos] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
-  const [showWelcome, setShowWelcome] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const { isPro, loading: proLoading, refreshProStatus } = useProStatus();
 
   // New onboarding flow state
-  const [onboardingPhase, setOnboardingPhase] = useState(null); // null=loading, 'quickAdd','baseline','persona','reveal','completed'
+  const [onboardingPhase, setOnboardingPhase] = useState(null); // null=loading, 'quickAdd','vehiclePhoto','baseline','persona','reveal','notifications','account','completed'
   const [onboardingVehicle, setOnboardingVehicle] = useState(null); // partial vehicle being built during onboarding
   const [onboardingBaseline, setOnboardingBaseline] = useState(null); // baseline answers
   const [userPersona, setUserPersona] = useState(null);
@@ -192,29 +242,26 @@ export default function App() {
           setOnboardingPhase('quickAdd');
         }
         
-        // Request notification permissions
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        
         // Initialize RevenueCat (always initialize, not just after onboarding)
         try {
           const revenueCatResult = await initializeRevenueCat();
           if (__DEV__ && revenueCatResult.success) {
             console.log('RevenueCat initialized successfully');
           }
+          // Re-check pro status now that RevenueCat is configured
+          // (the initial check in useProStatus may have run before initialization)
+          if (revenueCatResult.success && !revenueCatResult.skipped) {
+            refreshProStatus();
+          }
         } catch (error) {
           if (__DEV__) {
             console.warn('RevenueCat initialization failed:', error);
           }
         }
-        
+
         setIsReady(true);
       } catch (error) {
-        console.error('Error initializing app:', error);
+        logger.error('Error initializing app:', error);
         setIsReady(true);
       }
     };
@@ -224,7 +271,7 @@ export default function App() {
 
   // Handle app state changes to track session time
   useEffect(() => {
-    if (!isReady || showWelcome || showOnboarding) return;
+    if (!isReady) return;
 
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
@@ -239,11 +286,11 @@ export default function App() {
     return () => {
       subscription?.remove();
     };
-  }, [isReady, showOnboarding]);
+  }, [isReady]);
 
   // Track app usage and show paywall after 3 minutes
   useEffect(() => {
-    if (!isReady || showWelcome || showOnboarding) return;
+    if (!isReady) return;
 
     let intervalId = null;
     let checkIntervalId = null;
@@ -258,8 +305,24 @@ export default function App() {
           });
 
           if (result.success && (result.purchased || result.restored)) {
-            // User purchased or restored - mark paywall as shown
             await markPaywallShown();
+            refreshProStatus();
+            // Prompt sign-in for cloud backup if not already signed in
+            const alreadyPrompted = storage.get('postPurchaseSignInShown');
+            if (!alreadyPrompted) {
+              await storage.set('postPurchaseSignInShown', true);
+              const user = await getCurrentUser();
+              if (!user) {
+                Alert.alert(
+                  'Enable Cloud Backup',
+                  'Sign in to keep your maintenance history, modifications, and garage backed up so you never lose them.',
+                  [
+                    { text: 'Sign In', onPress: () => navigationRef?.current?.navigate?.('Vehicles', { screen: 'Settings' }) },
+                    { text: 'Later', style: 'cancel' },
+                  ]
+                );
+              }
+            }
           } else if (result.success && result.cancelled) {
             // User cancelled - mark as shown so we don't keep pestering
             await markPaywallShown();
@@ -306,7 +369,7 @@ export default function App() {
         }
       });
     };
-  }, [isReady, showOnboarding]);
+  }, [isReady]);
 
   // Handle notification taps
   useEffect(() => {
@@ -467,6 +530,7 @@ export default function App() {
   const saveVehicles = async (updatedVehicles) => {
     setVehicles(updatedVehicles);
     const success = await storage.set('vehicles', updatedVehicles);
+    if (success) scheduleSyncAfterWrite();
     if (!success) {
       const previousVehicles = await storage.getAsync('vehicles') || vehicles;
       setVehicles(previousVehicles);
@@ -478,23 +542,26 @@ export default function App() {
   const saveInventory = async (updatedInventory) => {
     setInventory(updatedInventory);
     await storage.set('inventory', updatedInventory);
+    scheduleSyncAfterWrite();
   };
 
   const saveTodos = async (updatedTodos) => {
     setTodos(updatedTodos);
     await storage.set('todos', updatedTodos);
+    scheduleSyncAfterWrite();
   };
 
   const saveShoppingList = async (updatedList) => {
     setShoppingList(updatedList);
     await storage.set('shoppingList', updatedList);
+    scheduleSyncAfterWrite();
   };
 
   const addVehicle = (vehicle) => {
     const newVehicle = {
       ...vehicle,
       id: Date.now().toString(),
-      maintenanceRecords: [],
+      maintenanceRecords: vehicle.maintenanceRecords || [],
       createdAt: new Date().toISOString(),
       mileageLastUpdated: vehicle.mileage ? new Date().toISOString() : null,
       mileageHistory: vehicle.mileage ? [{
@@ -506,6 +573,7 @@ export default function App() {
     };
     const updated = [...vehicles, newVehicle];
     saveVehicles(updated);
+    scheduleSpecFeedback(newVehicle);
     setShowVehicleForm(false);
     setEditingVehicle(null);
     setServiceHistoryPromptVehicle(newVehicle);
@@ -556,6 +624,14 @@ export default function App() {
   };
 
   const launchReceiptScan = async (source) => {
+    if (!isPro) {
+      Alert.alert(
+        'Pro Feature',
+        'AI receipt scanning requires Pop the Hood Pro. You can upgrade in Settings > Subscription.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     Alert.alert(
       'Scan Receipt',
       'Choose how to capture the receipt',
@@ -661,6 +737,8 @@ export default function App() {
     );
     const success = saveVehicles(updated);
     if (success) {
+      const mergedVehicle = updated.find(v => v.id === id);
+      if (mergedVehicle) scheduleSpecFeedback(mergedVehicle);
       setShowVehicleForm(false);
       setEditingVehicle(null);
     }
@@ -911,16 +989,44 @@ export default function App() {
   };
 
   const lendInventoryItem = (id, borrowData) => {
-    const updated = inventory.map(item => 
+    const updated = inventory.map(item =>
       item.id === id ? { ...item, ...borrowData } : item
     );
     saveInventory(updated);
     setShowBorrowModal(false);
     setBorrowingItem(null);
+
+    // Schedule a local notification for the return reminder date so it fires even when app is closed
+    if (borrowData.returnReminderDate && borrowData.borrowedBy && borrowData.name) {
+      (async () => {
+        try {
+          const enabled = await storage.getAsync('notificationsEnabled');
+          if (!enabled) return;
+          const reminderDate = new Date(borrowData.returnReminderDate);
+          reminderDate.setHours(9, 0, 0, 0);
+          if (reminderDate.getTime() <= Date.now()) return; // past, let the existing useEffect handle it
+          const identifier = `returnReminder_${id}`;
+          await Notifications.scheduleNotificationAsync({
+            identifier,
+            content: {
+              title: 'Return Reminder',
+              body: `Time to check in! ${borrowData.borrowedBy} borrowed "${borrowData.name}" 7 days ago.`,
+              sound: true,
+            },
+            trigger: {
+              type: 'date',
+              date: reminderDate,
+            },
+          });
+        } catch (e) {
+          logger.error('Failed to schedule return reminder notification', e);
+        }
+      })();
+    }
   };
 
   const returnInventoryItem = (id) => {
-    const updated = inventory.map(item => 
+    const updated = inventory.map(item =>
       item.id === id ? {
         ...item,
         isBorrowed: false,
@@ -934,6 +1040,9 @@ export default function App() {
       } : item
     );
     saveInventory(updated);
+
+    // Cancel the scheduled return reminder notification
+    Notifications.cancelScheduledNotificationAsync(`returnReminder_${id}`).catch(() => {});
   };
 
   const deleteInventoryItem = (id) => {
@@ -1089,6 +1198,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
+        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 'auto', marginBottom: 'auto' }} />
       </View>
     );
   }
@@ -1111,7 +1221,7 @@ export default function App() {
   const saveOnboardingVehicle = async (vehicleResult, baseline) => {
     if (!vehicleResult) return;
 
-    const { vin, decodedData, recalls } = vehicleResult;
+    const { vin, decodedData, recalls, photoUri } = vehicleResult;
     const defaults = getVehicleDefaults(
       decodedData.make, decodedData.model, decodedData.year, decodedData.trim
     );
@@ -1156,10 +1266,37 @@ export default function App() {
       recalls: recalls || [],
       completedRecalls: [],
       ...(defaults || {}),
+      ...(photoUri ? {
+        vehicleImage: photoUri,
+        images: [{ id: 'img_0', data: photoUri }],
+      } : {}),
+      ...(baseline?.annualMileage ? { annualMileage: baseline.annualMileage } : {}),
+      ...(baseline?.seasonalMonths?.length ? { seasonalMonths: baseline.seasonalMonths } : {}),
+      ...(baseline?.seasonalEstimatedMiles ? { seasonalEstimatedMiles: baseline.seasonalEstimatedMiles } : {}),
+      ...(baseline?.ownershipDuration ? { ownershipDuration: baseline.ownershipDuration } : {}),
+      ...(baseline?.diyComfort ? { diyComfort: baseline.diyComfort } : {}),
     };
+
+    // Save profile-level data (applies across all vehicles)
+    if (baseline?.annualMileage) await storage.set('annualMileage', baseline.annualMileage);
+    if (baseline?.seasonalMonths?.length) await storage.set('seasonalMonths', baseline.seasonalMonths);
+    if (baseline?.seasonalEstimatedMiles) await storage.set('seasonalEstimatedMiles', String(baseline.seasonalEstimatedMiles));
+    if (baseline?.ownershipDuration) await storage.set('ownershipDuration', baseline.ownershipDuration);
+    if (baseline?.diyComfort) await storage.set('diyComfort', baseline.diyComfort);
 
     await addVehicle(newVehicle);
   };
+
+  // Show loading screen while onboarding phase is being determined
+  if (onboardingPhase === null) {
+    return (
+      <SafeAreaProvider>
+        <View style={{ flex: 1, backgroundColor: '#1a1a1a', justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#0066cc" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 
   // New onboarding flow
   if (onboardingPhase && onboardingPhase !== 'completed') {
@@ -1171,12 +1308,24 @@ export default function App() {
             <QuickAddScreen
               onVehicleDecoded={(result) => {
                 setOnboardingVehicle(result);
-                advanceToPhase('baseline');
+                advanceToPhase('vehiclePhoto');
               }}
               onSkip={() => {
                 setOnboardingVehicle(null);
                 advanceToPhase('baseline');
               }}
+            />
+          )}
+          {onboardingPhase === 'vehiclePhoto' && (
+            <VehiclePhotoScreen
+              vehicleData={onboardingVehicle}
+              onContinue={(photoUri) => {
+                if (photoUri) {
+                  setOnboardingVehicle(prev => ({ ...prev, photoUri }));
+                }
+                advanceToPhase('baseline');
+              }}
+              onSkip={() => advanceToPhase('baseline')}
             />
           )}
           {onboardingPhase === 'baseline' && (
@@ -1205,11 +1354,12 @@ export default function App() {
               vehicleData={onboardingVehicle}
               baselineData={onboardingBaseline}
               hasVehicle={!!onboardingVehicle}
+              persona={userPersona}
               onEnterGarage={async () => {
                 if (onboardingVehicle) {
                   await saveOnboardingVehicle(onboardingVehicle, onboardingBaseline);
                 }
-                await completeOnboarding();
+                advanceToPhase('notifications');
               }}
               onAddAnother={async () => {
                 if (onboardingVehicle) {
@@ -1220,6 +1370,22 @@ export default function App() {
                 advanceToPhase('quickAdd');
               }}
               onBack={() => advanceToPhase('persona')}
+            />
+          )}
+          {onboardingPhase === 'notifications' && (
+            <NotificationsScreen
+              onEnable={() => advanceToPhase('account')}
+              onSkip={() => advanceToPhase('account')}
+            />
+          )}
+          {onboardingPhase === 'account' && (
+            <AccountScreen
+              onSignedIn={async () => {
+                await completeOnboarding();
+              }}
+              onSkip={async () => {
+                await completeOnboarding();
+              }}
             />
           )}
         </ThemeProvider>
@@ -1286,11 +1452,15 @@ export default function App() {
     },
     setShowMileageModal,
     setMileageModalVehicle,
+    isPro,
+    proLoading,
+    refreshProStatus,
   };
 
   return (
     <ThemeProvider>
-    <NavigationContainer>
+    <ErrorBoundary>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       <StatusBar style="light" />
       <Tab.Navigator
         screenOptions={{
@@ -1303,12 +1473,33 @@ export default function App() {
           tabBarLabelStyle: {
             fontSize: Platform.OS === 'android' ? 10 : 12,
           },
+          tabBarButton: (props) => <Pressable {...props} accessibilityRole="tab" />,
         }}
       >
-        <Tab.Screen 
-          name="Vehicles" 
-          options={{ 
+        <Tab.Screen
+          name="Dashboard"
+          options={({ navigation }) => ({
+            tabBarAccessibilityLabel: 'Dashboard tab',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home" size={size} color={color} />
+            ),
+            headerRight: () => (
+              <TouchableOpacity
+                style={{ marginRight: 16, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+                onPress={() => navigation.navigate('Vehicles', { screen: 'Settings' })}
+              >
+                <Ionicons name="settings-outline" size={24} color={theme.colors.textPrimary} />
+              </TouchableOpacity>
+            ),
+          })}
+        >
+          {(props) => <DashboardScreen {...props} appContext={appContext} />}
+        </Tab.Screen>
+        <Tab.Screen
+          name="Vehicles"
+          options={{
             headerShown: false,
+            tabBarAccessibilityLabel: 'Vehicles tab',
             tabBarLabel: vehicles.length === 1 ? 'Vehicle' : 'Vehicles',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="car" size={size} color={color} />
@@ -1317,57 +1508,36 @@ export default function App() {
         >
           {() => <VehiclesStack appContext={appContext} />}
         </Tab.Screen>
-        <Tab.Screen 
-          name="Garage" 
-          options={{
+        <Tab.Screen
+          name="Garage"
+          options={({ navigation }) => ({
+            tabBarAccessibilityLabel: 'Garage tab',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="cube" size={size} color={color} />
             ),
-          }}
+            headerRight: () => (
+              <TouchableOpacity
+                style={{ marginRight: 16, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+                onPress={() => navigation.navigate('Vehicles', { screen: 'Settings' })}
+              >
+                <Ionicons name="settings-outline" size={24} color={theme.colors.textPrimary} />
+              </TouchableOpacity>
+            ),
+          })}
         >
           {() => <InventoryScreen appContext={appContext} />}
         </Tab.Screen>
-        <Tab.Screen 
-          name="Past Due" 
-          options={{
-            tabBarBadge: getPastDueCount() > 0 ? getPastDueCount() : null,
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="warning" size={size} color={color} />
-            ),
-          }}
-        >
-          {(props) => <PastDueScreen {...props} appContext={appContext} />}
-        </Tab.Screen>
-        <Tab.Screen 
-          name="Analytics" 
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="stats-chart" size={size} color={color} />
-            ),
-          }}
-        >
-          {() => <SavingsScreen appContext={appContext} />}
-        </Tab.Screen>
-        <Tab.Screen 
-          name="Diagnostics" 
+        <Tab.Screen
+          name="Diagnostics"
           options={{
             headerShown: false,
+            tabBarAccessibilityLabel: 'Diagnostics tab',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="construct" size={size} color={color} />
             ),
           }}
         >
           {() => <DiagnosticsStack appContext={appContext} />}
-        </Tab.Screen>
-        <Tab.Screen 
-          name="Settings" 
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
-          }}
-        >
-          {(props) => <SettingsScreen {...props} appContext={appContext} />}
         </Tab.Screen>
       </Tab.Navigator>
 
@@ -1498,9 +1668,12 @@ export default function App() {
         />
       )}
     </NavigationContainer>
+    </ErrorBoundary>
     </ThemeProvider>
   );
 }
+
+export default Sentry.wrap(App);
 
 const styles = StyleSheet.create({
   container: {

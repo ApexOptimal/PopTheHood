@@ -30,6 +30,7 @@ import { decodeVIN, cleanVIN, isValidVIN } from '../utils/vinDecoder';
 import { fetchRecalls, formatRecall, getRecallSummaryMessage } from '../utils/recalls';
 import { identifyItemFromImage } from '../utils/visionAI';
 import { copyToPermanentStorage } from '../utils/fileStorage';
+import { resizeForVehicle } from '../utils/imageResize';
 import {
   vehicleMakes,
   vehicleModels,
@@ -47,6 +48,7 @@ import {
   vehicleSpecificSpecs
 } from '../data/vehicleData';
 import { importVehicleSpecs } from '../utils/vehicleSpecsImport';
+import logger from '../utils/logger';
 
 export default function VehicleFormModal({ initialData, isEditing, onSubmit, onCancel }) {
   const scrollViewRef = React.useRef(null);
@@ -175,12 +177,16 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
   const [pickerModal, setPickerModal] = useState({ visible: false, type: null, data: [] });
-  const [vehicleImage, setVehicleImage] = useState(
-    initialData?.images?.[0]?.data || 
-    initialData?.images?.find(img => img.id === initialData?.featuredImageId)?.data || 
-    null
-  );
+  const [vehicleImages, setVehicleImages] = useState(() => {
+    if (initialData?.images && initialData.images.length > 0) {
+      return initialData.images.map(img => img.data).filter(Boolean).slice(0, 3);
+    }
+    if (initialData?.vehicleImage) return [initialData.vehicleImage];
+    return [];
+  });
   const [vinDecoding, setVinDecoding] = useState(false);
+  const [vinSuccessBanner, setVinSuccessBanner] = useState(null);
+  const vinBannerTimer = useRef(null);
   const [recalls, setRecalls] = useState([]);
   const [loadingRecalls, setLoadingRecalls] = useState(false);
   
@@ -618,7 +624,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
       }
     });
 
-    // Clean up empty build sheet values
+    // Clean up empty modifications (buildSheet) values
     const buildSheet = { ...formData.buildSheet };
     Object.keys(buildSheet).forEach(key => {
       if (!buildSheet[key]) {
@@ -636,7 +642,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
       lighting: Object.keys(lighting).length > 0 ? lighting : undefined,
       partsSKUs: Object.keys(partsSKUs).length > 0 ? partsSKUs : undefined,
       buildSheet: Object.keys(buildSheet).length > 0 ? buildSheet : undefined,
-      vehicleImage: vehicleImage || undefined,
+      images: vehicleImages.length > 0 ? vehicleImages.map((uri, i) => ({ id: `img_${i}`, data: uri })) : undefined,
+      vehicleImage: vehicleImages[0] || undefined,
       completedRecalls: completedRecalls.length > 0 ? completedRecalls : undefined
     });
   };
@@ -760,6 +767,11 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
   };
 
   const handleTakePhoto = async () => {
+    if (vehicleImages.length >= 3) {
+      Alert.alert('Photo Limit', 'You can add up to 3 photos per vehicle. Remove a photo first to add a new one.');
+      return;
+    }
+
     const hasPermission = await requestCameraPermission();
     if (!hasPermission) return;
 
@@ -772,22 +784,21 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
       });
 
       if (!result.canceled && result.assets[0]) {
-        // Copy to permanent storage
-        const permanentUri = await copyToPermanentStorage(
-          result.assets[0].uri,
-          'vehicles'
-        );
-        
-        // Replace existing image with new one
-        setVehicleImage(permanentUri);
+        const permanentUri = await resizeForVehicle(result.assets[0].uri);
+        setVehicleImages(prev => [...prev, permanentUri].slice(0, 3));
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      logger.error('Error taking photo:', error);
       Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
 
   const handlePickImage = async () => {
+    if (vehicleImages.length >= 3) {
+      Alert.alert('Photo Limit', 'You can add up to 3 photos per vehicle. Remove a photo first to add a new one.');
+      return;
+    }
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaType?.Images ?? 'images',
@@ -797,23 +808,17 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
       });
 
       if (!result.canceled && result.assets[0]) {
-        // Copy to permanent storage
-        const permanentUri = await copyToPermanentStorage(
-          result.assets[0].uri,
-          'vehicles'
-        );
-        
-        // Replace existing image with new one
-        setVehicleImage(permanentUri);
+        const permanentUri = await resizeForVehicle(result.assets[0].uri);
+        setVehicleImages(prev => [...prev, permanentUri].slice(0, 3));
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      logger.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to select image. Please try again.');
     }
   };
 
-  const handleRemoveImage = () => {
-    setVehicleImage(null);
+  const handleRemoveImage = (index) => {
+    setVehicleImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const showImageOptions = () => {
@@ -856,7 +861,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
 
                 await processVINImage(result.assets[0].uri);
               } catch (error) {
-                console.error('Camera error:', error);
+                logger.error('Camera error:', error);
                 Alert.alert('Error', 'Failed to take photo. Please try again.');
               }
             }
@@ -878,7 +883,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
 
                 await processVINImage(result.assets[0].uri);
               } catch (error) {
-                console.error('Photo library error:', error);
+                logger.error('Photo library error:', error);
                 Alert.alert('Error', 'Failed to select photo. Please try again.');
               }
             }
@@ -887,7 +892,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
         ]
       );
     } catch (error) {
-      console.error('Error in handleScanVIN:', error);
+      logger.error('Error in handleScanVIN:', error);
       Alert.alert('Error', 'Failed to scan VIN. Please try again.');
     }
   };
@@ -902,11 +907,11 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
         await handleVINChange(extractedVIN, false);
       } else {
         // Only show error if VIN couldn't be extracted at all
-        console.warn('VIN not found in image');
+        if (__DEV__) console.warn('VIN not found in image');
         // Don't show alert - user can try again or enter manually
       }
     } catch (error) {
-      console.error('Error processing VIN image:', error);
+      logger.error('Error processing VIN image:', error);
       // Don't show alert - user can try again or enter manually
     }
   };
@@ -939,7 +944,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
 
   // Helper function to split model and trim if they're combined (e.g., "WRX Limited")
   const splitModelAndTrim = (modelString, make, existingTrim) => {
-    console.log('🔧 splitModelAndTrim called:', { modelString, make, existingTrim });
+    if (__DEV__) console.log('splitModelAndTrim called:', { modelString, make, existingTrim });
     
     // Only skip splitting if we have a valid existing trim
     // If existingTrim is empty/null/undefined, we should still try to split
@@ -949,7 +954,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
     
     if (existingTrim && existingTrim.trim().length > 0) {
       // If trim is already set and valid, don't try to split
-      console.log('⏭️ Skipping split - trim already exists:', existingTrim);
+      if (__DEV__) console.log('Skipping split - trim already exists:', existingTrim);
       return { model: modelString, trim: existingTrim };
     }
 
@@ -1121,42 +1126,38 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
         let finalModel = decodedData.model;
         let finalTrim = decodedData.trim;
         
-        console.log('🔍 Processing model/trim:', {
-          decodedModel: decodedData.model,
-          decodedTrim: decodedData.trim,
-          targetMake: targetMake
-        });
+        if (__DEV__) console.log('Processing model/trim:', { decodedModel: decodedData.model, decodedTrim: decodedData.trim, targetMake });
         
         if (decodedData.model) {
           if (targetMake) {
             // Try to split model/trim combination
             const split = splitModelAndTrim(decodedData.model, targetMake, decodedData.trim);
-            console.log('✂️ Split result:', split);
+            if (__DEV__) console.log('Split result:', split);
             finalModel = split.model;
             finalTrim = split.trim || decodedData.trim; // Use split trim if found, otherwise use decoded trim
             
             // Try to find matching model first for compatibility
             const matchedModel = findMatchingModel(finalModel, targetMake);
             updates.model = matchedModel || finalModel;
-            console.log('✅ Model set:', updates.model);
+            if (__DEV__) console.log('Model set:', updates.model);
           } else {
             // No make, but still set the model
             updates.model = decodedData.model;
-            console.log('✅ Model set (no make):', updates.model);
+            if (__DEV__) console.log('Model set (no make):', updates.model);
           }
         }
         
         // Always set trim if decoded or extracted from model
         if (finalTrim) {
           updates.trim = finalTrim;
-          console.log('✅ Trim set:', updates.trim);
+          if (__DEV__) console.log('Trim set:', updates.trim);
         } else {
-          console.log('⚠️ No trim to set from decoded data');
+          if (__DEV__) console.log('No trim to set from decoded data');
           // Try one more time - maybe trim is in a different format from NHTSA
           // Check if decodedData has any trim-like information
           if (decodedData.trim && decodedData.trim.trim().length > 0) {
             updates.trim = decodedData.trim.trim();
-            console.log('✅ Trim set from decodedData.trim:', updates.trim);
+            if (__DEV__) console.log('Trim set from decodedData.trim:', updates.trim);
           }
         }
 
@@ -1169,51 +1170,31 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
           : [];
         if (updates.trim && availableTrimsForMatch.length > 0) {
           updates.trim = matchTrimToAvailable(updates.trim, availableTrimsForMatch);
-          console.log('✅ Trim normalized to list:', updates.trim);
+          if (__DEV__) console.log('Trim normalized to list:', updates.trim);
         }
         // If trim still empty, try to infer from notes (e.g. title scan put "limited" in notes)
         if (!updates.trim && availableTrimsForMatch.length > 0 && (formData.notes || '').trim()) {
           const inferredTrim = inferTrimFromNotes(formData.notes, availableTrimsForMatch);
           if (inferredTrim) {
             updates.trim = inferredTrim;
-            console.log('✅ Trim inferred from notes:', updates.trim);
+            if (__DEV__) console.log('Trim inferred from notes:', updates.trim);
           }
         }
         
-        // Build vehicle identification string
+        // Build vehicle identification string for success banner
         const makeName = updates.make || decodedData.make || 'Unknown';
         const modelName = updates.model || decodedData.model || 'Unknown Model';
         const trimName = updates.trim || decodedData.trim || null;
-        let vehicleIdentifiedText = '';
         if (decodedData.year && makeName && modelName) {
-          vehicleIdentifiedText = `Vehicle identified: ${decodedData.year} ${makeName} ${modelName}`;
-          if (trimName) {
-            vehicleIdentifiedText += ` ${trimName}`;
-          }
-        }
-        
-        // Add vehicle identification info to notes field if not already present
-        let updatedNotes = formData.notes || '';
-        if (vehicleIdentifiedText && !updatedNotes.includes('Vehicle identified:')) {
-          // Add to top of notes field
-          if (updatedNotes.trim()) {
-            updatedNotes = `${vehicleIdentifiedText}\n\n${updatedNotes}`;
-          } else {
-            updatedNotes = vehicleIdentifiedText;
-          }
-        }
-
-        // Fallback: if trim appears in the notes we're setting (e.g. in vehicleIdentifiedText from decodedData.trim) but didn't make it into updates.trim, infer it now
-        if (!updates.trim && availableTrimsForMatch.length > 0) {
-          const inferredFromNotes = inferTrimFromNotes(updatedNotes, availableTrimsForMatch);
-          if (inferredFromNotes) {
-            updates.trim = inferredFromNotes;
-            console.log('✅ Trim set from notes fallback:', updates.trim);
-          }
+          let bannerText = `Found: ${decodedData.year} ${makeName} ${modelName}`;
+          if (trimName) bannerText += ` ${trimName}`;
+          if (vinBannerTimer.current) clearTimeout(vinBannerTimer.current);
+          setVinSuccessBanner(bannerText);
+          vinBannerTimer.current = setTimeout(() => setVinSuccessBanner(null), 6000);
         }
         
         // Log updates before applying
-        console.log('📝 Applying updates:', updates);
+        if (__DEV__) console.log('Applying updates:', updates);
         
         // Set available trims now so the trim picker has options on the same render as the form update
         // (otherwise the trim row shows "No trim data available" until the useEffect runs)
@@ -1226,7 +1207,6 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
           const newData = {
             ...prev,
             ...updates,
-            notes: updatedNotes,
             // Reset dependent fields if parent changed (but preserve if we're setting them in updates)
             // Only reset if we're NOT setting new values
             ...(updates.make && prev.make !== updates.make ? 
@@ -1236,12 +1216,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
             ...(updates.model && prev.model !== updates.model ? 
               (!updates.trim ? { trim: '' } : {}) : {}),
           };
-          console.log('✅ Form data updated:', {
-            year: newData.year,
-            make: newData.make,
-            model: newData.model,
-            trim: newData.trim
-          });
+          if (__DEV__) console.log('Form data updated:', { year: newData.year, make: newData.make, model: newData.model, trim: newData.trim });
           return newData;
         });
         
@@ -1254,7 +1229,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
           // Use original decoded model for recalls - don't use the split model
           const recallModel = decodedData.model;
           
-          console.log('🔍 Fetching recalls with original model from API:', { recallYear, recallMake, recallModel });
+          if (__DEV__) console.log('Fetching recalls with original model from API:', { recallYear, recallMake, recallModel });
           
           // Fetch recalls asynchronously (don't block the form update)
           fetchRecallsForVehicle(recallYear, recallMake, recallModel);
@@ -1266,7 +1241,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
         //   Alert.alert('VIN Scanned', successMessage, [{ text: 'OK' }]);
         // }
       } catch (error) {
-        console.error('Error decoding VIN:', error);
+        logger.error('Error decoding VIN:', error);
         // Don't show alert - user can enter details manually
         // if (showAlert) {
         //   Alert.alert(
@@ -1312,24 +1287,17 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
     setLoadingRecalls(true);
     try {
       // Log what we're sending to the API
-      console.log('🔍 Fetching recalls with:', { year, make, model });
+      if (__DEV__) console.log('Fetching recalls with:', { year, make, model });
       
       const recallsData = await fetchRecalls(year, make, model);
       const formattedRecalls = recallsData.map(recall => formatRecall(recall));
       
       // Log full recall data for debugging
-      console.log(`✅ Loaded ${formattedRecalls.length} recalls for ${year} ${make} ${model}`);
-      if (formattedRecalls.length > 0) {
-        console.log('📋 Recalls:', formattedRecalls.map(r => ({
-          campaign: r.campaignNumber,
-          component: r.component,
-          summary: r.summary?.substring(0, 50) + '...'
-        })));
-      }
+      if (__DEV__) console.log(`Loaded ${formattedRecalls.length} recalls for ${year} ${make} ${model}`);
       
       setRecalls(formattedRecalls);
     } catch (error) {
-      console.error('Error fetching recalls:', error);
+      logger.error('Error fetching recalls:', error);
       setRecalls([]);
     } finally {
       setLoadingRecalls(false);
@@ -1382,7 +1350,11 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
             <Text style={styles.title}>
               {isEditing ? 'Edit Vehicle' : 'Add Vehicle'}
             </Text>
-            <TouchableOpacity onPress={() => handleAnimatedClose(onCancel)}>
+            <TouchableOpacity
+              onPress={() => handleAnimatedClose(onCancel)}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
               <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
@@ -1392,12 +1364,13 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
             style={styles.keyboardView}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
-            <ScrollView 
+            <ScrollView
               ref={scrollViewRef}
-              style={styles.content} 
+              style={styles.content}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
               {/* VIN Scan Button at Top */}
               {!isEditing && (
@@ -1406,6 +1379,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                     style={styles.vinScanTopButton}
                     onPress={handleScanVIN}
                     disabled={vinDecoding}
+                    accessibilityLabel="Scan VIN with camera to auto-fill"
+                    accessibilityRole="button"
                   >
                     {vinDecoding ? (
                       <>
@@ -1419,6 +1394,15 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                       </>
                     )}
                   </TouchableOpacity>
+                  {vinSuccessBanner ? (
+                    <View style={styles.vinSuccessBanner}>
+                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.successBright} />
+                      <Text style={styles.vinSuccessBannerText}>{vinSuccessBanner}</Text>
+                      <TouchableOpacity onPress={() => setVinSuccessBanner(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="close" size={16} color={theme.colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </View>
               )}
             {/* Year - First */}
@@ -1430,6 +1414,9 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   label: String(year),
                   value: String(year)
                 })))}
+                accessibilityLabel="Year"
+                accessibilityRole="button"
+                accessibilityHint="Opens year picker"
               >
                 <Text style={[styles.pickerButtonText, !formData.year && styles.pickerButtonPlaceholder]}>
                   {formData.year || 'Select Year...'}
@@ -1447,6 +1434,9 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   label: make,
                   value: make
                 })))}
+                accessibilityLabel="Make"
+                accessibilityRole="button"
+                accessibilityHint="Opens make picker"
               >
                 <Text style={[styles.pickerButtonText, !formData.make && styles.pickerButtonPlaceholder]}>
                   {formData.make || 'Select Make...'}
@@ -1465,6 +1455,9 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                     label: model,
                     value: model
                   })))}
+                  accessibilityLabel="Model"
+                  accessibilityRole="button"
+                  accessibilityHint="Opens model picker"
                 >
                   <Text style={[styles.pickerButtonText, !formData.model && styles.pickerButtonPlaceholder]}>
                     {formData.model || 'Select Model...'}
@@ -1484,6 +1477,9 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
               {formData.make && formData.model && availableTrims.length > 0 ? (
                 <TouchableOpacity
                   style={styles.pickerButton}
+                  accessibilityLabel="Trim Level"
+                  accessibilityRole="button"
+                  accessibilityHint="Opens trim picker"
                   onPress={() => openPicker('trim', availableTrims.map(trim => {
                     const trimDetails = getTrimDetails(formData.make, formData.model, trim);
                     const label = trimDetails ? `${trim} (${trimDetails.engine})` : trim;
@@ -1519,6 +1515,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 placeholder="Current odometer reading"
                 placeholderTextColor="#666"
                 keyboardType="numeric"
+                accessibilityLabel="Current Mileage"
               />
             </View>
 
@@ -1531,6 +1528,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 onChangeText={(text) => setFormData({ ...formData, licensePlate: text })}
                 placeholder="e.g., ABC-1234"
                 placeholderTextColor="#666"
+                accessibilityLabel="License Plate"
               />
             </View>
 
@@ -1561,6 +1559,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                       style={[styles.nicknameChip, isSelected && styles.nicknameChipSelected]}
                       onPress={() => setFormData({ ...formData, nickname: isSelected ? '' : suggestion })}
                       activeOpacity={0.7}
+                      accessibilityLabel={`Select nickname ${suggestion}`}
+                      accessibilityRole="button"
                     >
                       <Text style={[styles.nicknameChipText, isSelected && styles.nicknameChipTextSelected]}>
                         {suggestion}
@@ -1575,6 +1575,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 onChangeText={(text) => setFormData({ ...formData, nickname: text })}
                 placeholder="Or type a custom nickname"
                 placeholderTextColor="#666"
+                accessibilityLabel="Nickname"
               />
             </View>
 
@@ -1590,11 +1591,14 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   placeholderTextColor="#666"
                   maxLength={17}
                   autoCapitalize="characters"
+                  accessibilityLabel="Vehicle Identification Number"
                 />
                 <TouchableOpacity
                   style={styles.vinScanButton}
                   onPress={handleScanVIN}
                   disabled={vinDecoding}
+                  accessibilityLabel="Scan VIN with camera"
+                  accessibilityRole="button"
                 >
                   {vinDecoding ? (
                     <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -1647,33 +1651,41 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 onChangeText={(text) => setFormData({ ...formData, color: text })}
                 placeholder="e.g., Blue"
                 placeholderTextColor="#666"
+                accessibilityLabel="Color"
               />
             </View>
 
-            {/* Vehicle Image */}
+            {/* Vehicle Images */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Vehicle Photo</Text>
-              {vehicleImage ? (
-                <View style={styles.singleImageContainer}>
-                  <Image source={{ uri: vehicleImage }} style={styles.singleImagePreview} />
-                  <View style={styles.singleImageActions}>
-                    <TouchableOpacity style={styles.replaceImageButton} onPress={showImageOptions}>
-                      <Ionicons name="camera" size={20} color={theme.colors.primary} />
-                      <Text style={styles.replaceImageText}>Replace Photo</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.removeImageButtonSingle}
-                      onPress={handleRemoveImage}
-                    >
-                      <Ionicons name="trash" size={20} color={theme.colors.danger} />
-                      <Text style={styles.removeImageText}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
+              <Text style={styles.label}>Vehicle Photos ({vehicleImages.length}/3)</Text>
+              {vehicleImages.length > 0 && (
+                <View style={styles.vehicleImagesGrid}>
+                  {vehicleImages.map((uri, index) => (
+                    <View key={`vimg_${index}`} style={styles.vehicleImageItem}>
+                      <Image source={{ uri }} style={styles.vehicleImagePreview} />
+                      <TouchableOpacity
+                        style={styles.vehicleImageRemoveButton}
+                        onPress={() => handleRemoveImage(index)}
+                        accessibilityLabel={`Remove photo ${index + 1}`}
+                        accessibilityRole="button"
+                      >
+                        <Ionicons name="close-circle" size={24} color={theme.colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
-              ) : (
-                <TouchableOpacity style={styles.imageButton} onPress={showImageOptions}>
+              )}
+              {vehicleImages.length < 3 && (
+                <TouchableOpacity
+                  style={styles.imageButton}
+                  onPress={showImageOptions}
+                  accessibilityLabel={vehicleImages.length === 0 ? 'Add vehicle photo' : 'Add another vehicle photo'}
+                  accessibilityRole="button"
+                >
                   <Ionicons name="camera" size={20} color={theme.colors.primary} />
-                  <Text style={styles.imageButtonText}>Add Photo</Text>
+                  <Text style={styles.imageButtonText}>
+                    {vehicleImages.length === 0 ? 'Add Photo' : 'Add Another Photo'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1684,6 +1696,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 <TouchableOpacity
                   style={styles.recallsHeader}
                   onPress={() => setRecallsExpanded(!recallsExpanded)}
+                  accessibilityLabel={recallsExpanded ? 'Collapse recalls' : 'Expand vehicle recalls'}
+                  accessibilityRole="button"
                 >
                   <View style={styles.recallsHeaderLeft}>
                     <Ionicons name="warning" size={20} color="#ff8800" />
@@ -1716,6 +1730,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                         </View>
                         <TouchableOpacity
                           style={styles.recallsLink}
+                          accessibilityLabel="View recalls on NHTSA website"
+                          accessibilityRole="button"
                           onPress={async () => {
                             const url = `https://www.nhtsa.gov/recalls?make=${encodeURIComponent(formData.make)}&model=${encodeURIComponent(formData.model)}&modelYear=${encodeURIComponent(formData.year)}`;
                             try {
@@ -1726,7 +1742,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                                 Alert.alert('Error', 'Unable to open browser. Please visit nhtsa.gov/recalls manually.');
                               }
                             } catch (error) {
-                              console.error('Error opening URL:', error);
+                              logger.error('Error opening URL:', error);
                               Alert.alert('Error', 'Unable to open browser. Please visit nhtsa.gov/recalls manually.');
                             }
                           }}
@@ -1751,6 +1767,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                                 setCompletedRecalls(allCampaignNumbers);
                               }
                             }}
+                            accessibilityLabel={recalls.every(recall => completedRecalls.includes(recall.campaignNumber)) ? 'Uncheck all recalls' : 'Check all recalls'}
+                            accessibilityRole="button"
                           >
                             <Ionicons
                               name={
@@ -1793,6 +1811,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                                         : [...completedRecalls, recall.campaignNumber];
                                       setCompletedRecalls(newCompleted);
                                     }}
+                                    accessibilityLabel={isCompleted ? `Mark recall ${recall.campaignNumber} as incomplete` : `Mark recall ${recall.campaignNumber} as completed`}
+                                    accessibilityRole="checkbox"
                                   >
                                     <Ionicons
                                       name={isCompleted ? "checkbox" : "checkbox-outline"}
@@ -1872,6 +1892,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 value={formData.notes}
                 onChangeText={(text) => setFormData({ ...formData, notes: text })}
                 placeholder="Additional notes about this vehicle"
+                accessibilityLabel="Notes"
                 placeholderTextColor="#666"
                 multiline
                 scrollEnabled={true}
@@ -1893,13 +1914,15 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
               />
             </View>
 
-            {/* Build Sheet Section Toggle */}
+            {/* Modifications section toggle */}
             <TouchableOpacity
               style={styles.advancedToggle}
               onPress={() => setShowBuildSheet(!showBuildSheet)}
+              accessibilityLabel={showBuildSheet ? 'Hide Modifications' : 'Show Modifications'}
+              accessibilityRole="button"
             >
               <Text style={styles.advancedToggleText}>
-                {showBuildSheet ? 'Hide' : 'Show'} Build Sheet
+                {showBuildSheet ? 'Hide' : 'Show'} Modifications
               </Text>
               <Ionicons
                 name={showBuildSheet ? 'chevron-up' : 'chevron-down'}
@@ -1908,11 +1931,11 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
               />
             </TouchableOpacity>
 
-            {/* Build Sheet Content */}
+            {/* Modifications content */}
             {showBuildSheet && (
               <>
                 <View style={styles.sectionDivider}>
-                  <Text style={styles.sectionTitle}>Build Sheet</Text>
+                  <Text style={styles.sectionTitle}>Modifications</Text>
                   <Text style={styles.sectionDescription}>
                     Document modifications and aftermarket parts
                   </Text>
@@ -2050,6 +2073,8 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
             <TouchableOpacity
               style={styles.advancedToggle}
               onPress={() => setShowAdvanced(!showAdvanced)}
+              accessibilityLabel={showAdvanced ? 'Hide Advanced Settings' : 'Show Advanced Settings'}
+              accessibilityRole="button"
             >
               <Text style={styles.advancedToggleText}>
                 {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
@@ -2824,10 +2849,20 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
           </KeyboardAvoidingView>
 
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => handleAnimatedClose(onCancel)}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => handleAnimatedClose(onCancel)}
+              accessibilityLabel="Cancel"
+              accessibilityRole="button"
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmit}
+              accessibilityLabel={isEditing ? 'Update vehicle' : 'Add vehicle'}
+              accessibilityRole="button"
+            >
               <Text style={styles.submitButtonText}>
                 {isEditing ? 'Update' : 'Add'} Vehicle
               </Text>
@@ -2847,7 +2882,7 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
         presentationStyle="overFullScreen"
       >
         <Pressable style={styles.pickerModalOverlay} onPress={closePicker}>
-          <View style={styles.pickerModalContent} onStartShouldSetResponder={() => true}>
+          <Pressable style={styles.pickerModalContent} onPress={() => {}}>
             <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
               <View style={styles.pickerModalHeader}>
                 <Text style={styles.pickerModalTitle}>
@@ -2856,7 +2891,11 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                   {pickerModal.type === 'model' && 'Select Model'}
                   {pickerModal.type === 'trim' && 'Select Trim'}
                 </Text>
-                <TouchableOpacity onPress={closePicker}>
+                <TouchableOpacity
+                  onPress={closePicker}
+                  accessibilityLabel="Close picker"
+                  accessibilityRole="button"
+                >
                   <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
@@ -2887,9 +2926,10 @@ export default function VehicleFormModal({ initialData, isEditing, onSubmit, onC
                 style={styles.pickerList}
                 contentContainerStyle={styles.pickerListContent}
                 showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
               />
             </SafeAreaView>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </Modal>
@@ -3218,6 +3258,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  vehicleImagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  vehicleImageItem: {
+    position: 'relative',
+    width: '31%',
+    aspectRatio: 4 / 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  vehicleImagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  vehicleImageRemoveButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+  },
   vinContainer: {
     flexDirection: 'row',
     gap: 8,
@@ -3293,6 +3360,24 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  vinSuccessBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.successBright,
+  },
+  vinSuccessBannerText: {
+    flex: 1,
+    color: theme.colors.successBright,
+    fontSize: 14,
+    fontWeight: '600',
   },
   recallsHeader: {
     flexDirection: 'row',

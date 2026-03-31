@@ -4,6 +4,7 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
+import logger from './logger';
 
 // Get the document directory path (permanent, backed up)
 const getDocumentDirectory = () => {
@@ -38,7 +39,7 @@ const ensureDataDirectory = async () => {
     
     return dataDir;
   } catch (error) {
-    console.error('Error ensuring data directory:', error);
+    logger.error('Error ensuring data directory:', error);
     throw error;
   }
 };
@@ -74,10 +75,10 @@ export const copyToPermanentStorage = async (sourceUri, subdirectory = 'vehicles
       to: targetUri,
     });
     
-    console.log(`File copied to permanent storage: ${targetUri}`);
+    logger.log(`File copied to permanent storage: ${targetUri}`);
     return targetUri;
   } catch (error) {
-    console.error('Error copying file to permanent storage:', error);
+    logger.error('Error copying file to permanent storage:', error);
     // If copy fails, return original URI as fallback
     return sourceUri;
   }
@@ -96,13 +97,13 @@ export const deleteFromPermanentStorage = async (fileUri) => {
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
       if (fileInfo.exists) {
         await FileSystem.deleteAsync(fileUri, { idempotent: true });
-        console.log(`File deleted from permanent storage: ${fileUri}`);
+        logger.log(`File deleted from permanent storage: ${fileUri}`);
         return true;
       }
     }
     return false;
   } catch (error) {
-    console.error('Error deleting file from permanent storage:', error);
+    logger.error('Error deleting file from permanent storage:', error);
     return false;
   }
 };
@@ -118,7 +119,7 @@ export const fileExists = async (fileUri) => {
     const fileInfo = await FileSystem.getInfoAsync(fileUri);
     return fileInfo.exists;
   } catch (error) {
-    console.error('Error checking file existence:', error);
+    logger.error('Error checking file existence:', error);
     return false;
   }
 };
@@ -156,7 +157,7 @@ export const getStorageInfo = async () => {
         }
       } catch (error) {
         // Directory might be empty or inaccessible
-        console.log(`Could not read directory ${dir}:`, error.message);
+        logger.log(`Could not read directory ${dir}:`, error.message);
       }
     };
     
@@ -169,7 +170,7 @@ export const getStorageInfo = async () => {
       path: dataDir,
     };
   } catch (error) {
-    console.error('Error getting storage info:', error);
+    logger.error('Error getting storage info:', error);
     return { exists: false, size: 0, sizeMB: '0.00', error: error.message };
   }
 };
@@ -221,7 +222,7 @@ export const cleanupOrphanedFiles = async (vehicles = []) => {
       }
     } catch (error) {
       // Directory might not exist yet
-      console.log('Vehicles directory not found or empty');
+      logger.log('Vehicles directory not found or empty');
     }
     
     // Check receipts directory
@@ -236,13 +237,13 @@ export const cleanupOrphanedFiles = async (vehicles = []) => {
       }
     } catch (error) {
       // Directory might not exist yet
-      console.log('Receipts directory not found or empty');
+      logger.log('Receipts directory not found or empty');
     }
     
-    console.log(`Cleaned up ${deletedCount} orphaned files`);
+    logger.log(`Cleaned up ${deletedCount} orphaned files`);
     return deletedCount;
   } catch (error) {
-    console.error('Error cleaning up orphaned files:', error);
+    logger.error('Error cleaning up orphaned files:', error);
     return 0;
   }
 };

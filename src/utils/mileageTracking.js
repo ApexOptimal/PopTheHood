@@ -122,7 +122,7 @@ export function getPredictedMileage(vehicle) {
  * @returns {Date|null} Predicted date when service will be due
  */
 export function predictServiceDate(vehicle, targetMileage) {
-  const currentMileage = parseInt(vehicle.mileage) || 0;
+  const currentMileage = parseInt(vehicle.mileage, 10) || 0;
   const mileageHistory = vehicle.mileageHistory || [];
   
   if (currentMileage >= targetMileage) {
@@ -162,7 +162,7 @@ export function addMileageEntry(vehicle, mileage) {
   const history = vehicle.mileageHistory || [];
   const newEntry = {
     date: new Date().toISOString(),
-    mileage: parseInt(mileage)
+    mileage: parseInt(mileage, 10)
   };
 
   // Add to history (keep last 50 entries to prevent storage bloat)
@@ -172,7 +172,7 @@ export function addMileageEntry(vehicle, mileage) {
 
   return {
     ...vehicle,
-    mileage: parseInt(mileage),
+    mileage: parseInt(mileage, 10),
     mileageHistory: updatedHistory,
     mileageLastUpdated: new Date().toISOString()
   };

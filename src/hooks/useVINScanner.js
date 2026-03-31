@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { extractVINFromImage } from '../utils/visionAI';
 import { decodeVIN, cleanVIN, isValidVIN } from '../utils/vinDecoder';
 import { fetchRecalls } from '../utils/recalls';
+import logger from '../utils/logger';
 
 /**
  * Hook for VIN scanning and decoding.
@@ -51,7 +52,7 @@ export function useVINScanner() {
                 const extracted = await processImage(result.assets[0].uri);
                 resolve(extracted);
               } catch (error) {
-                console.error('Camera error:', error);
+                logger.error('Camera error:', error);
                 resolve(null);
               }
             },
@@ -70,7 +71,7 @@ export function useVINScanner() {
                 const extracted = await processImage(result.assets[0].uri);
                 resolve(extracted);
               } catch (error) {
-                console.error('Photo library error:', error);
+                logger.error('Photo library error:', error);
                 resolve(null);
               }
             },
@@ -92,7 +93,7 @@ export function useVINScanner() {
       }
       return null;
     } catch (error) {
-      console.error('Error processing VIN image:', error);
+      logger.error('Error processing VIN image:', error);
       return null;
     } finally {
       setIsScanning(false);
@@ -121,13 +122,13 @@ export function useVINScanner() {
             decodedData.model
           );
         } catch (e) {
-          console.warn('Failed to fetch recalls:', e);
+          logger.warn('Failed to fetch recalls:', e);
         }
       }
 
       return { vin: cleaned, decodedData, recalls };
     } catch (error) {
-      console.error('VIN decode error:', error);
+      logger.error('VIN decode error:', error);
       return null;
     } finally {
       setIsDecoding(false);

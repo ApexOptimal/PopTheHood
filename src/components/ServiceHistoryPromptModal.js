@@ -8,6 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 export default function ServiceHistoryPromptModal({ vehicle, onSelect, onSkip }) {
   if (!vehicle) return null;
@@ -33,12 +34,12 @@ export default function ServiceHistoryPromptModal({ vehicle, onSelect, onSkip })
             onPress={() => onSelect('current')}
             activeOpacity={0.8}
           >
-            <Ionicons name="checkmark-circle" size={28} color="#0066cc" />
+            <Ionicons name="checkmark-circle" size={28} color={theme.colors.primary} />
             <View style={styles.optionText}>
               <Text style={styles.optionTitle}>Current on Maintenance</Text>
               <Text style={styles.optionHint}>Clean title — we'll assume all factory intervals are complete up to this mileage. Next service starts from your current odometer.</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#0066cc" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -46,12 +47,12 @@ export default function ServiceHistoryPromptModal({ vehicle, onSelect, onSkip })
             onPress={() => onSelect('unknown')}
             activeOpacity={0.8}
           >
-            <Ionicons name="construct" size={28} color="#b0b0b0" />
+            <Ionicons name="construct" size={28} color={theme.colors.textSecondary} />
             <View style={styles.optionText}>
               <Text style={styles.optionTitle}>Just Bought It / Unknown History</Text>
               <Text style={styles.optionHint}>Project car — we'll show overdue items. Use "Mark All Prior Tasks as Complete" on Past Due if you've done a full tune-up.</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#b0b0b0" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
@@ -66,30 +67,30 @@ export default function ServiceHistoryPromptModal({ vehicle, onSelect, onSkip })
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   card: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -104,11 +105,11 @@ const styles = StyleSheet.create({
   },
   optionPrimary: {
     backgroundColor: 'rgba(0, 102, 204, 0.12)',
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
   },
   optionSecondary: {
-    backgroundColor: '#1a1a1a',
-    borderColor: '#4d4d4d',
+    backgroundColor: theme.colors.background,
+    borderColor: theme.colors.border,
   },
   optionText: {
     flex: 1,
@@ -116,12 +117,12 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   optionHint: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     lineHeight: 18,
   },
   skipButton: {
@@ -131,6 +132,6 @@ const styles = StyleSheet.create({
   },
   skipButtonText: {
     fontSize: 15,
-    color: '#888',
+    color: theme.colors.textTertiary,
   },
 });

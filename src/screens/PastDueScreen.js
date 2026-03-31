@@ -9,9 +9,12 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatDistance, formatDistanceWithSeparators, getUnitSystem } from '../utils/unitConverter';
 import { storage } from '../utils/storage';
 import { checkOilInventory } from '../utils/oilInventoryCheck';
+import { theme } from '../theme';
+import EmptyState from '../components/EmptyState';
 
 export default function PastDueScreen({ appContext, navigation }) {
   const { vehicles, inventory = [], updateVehicle, setSelectedVehicle, setShowMaintenanceForm, setEditingMaintenance } = appContext;
@@ -42,7 +45,7 @@ export default function PastDueScreen({ appContext, navigation }) {
     const overdue = [];
     const alertsByVehicle = {};
 
-    vehicles.forEach(vehicle => {
+    (vehicles || []).forEach(vehicle => {
       // "Current on Maintenance" = assume all factory intervals complete up to current mileage; next service starts from odometer
       if (vehicle.maintenanceHistoryStatus === 'current') {
         return;
@@ -420,6 +423,8 @@ export default function PastDueScreen({ appContext, navigation }) {
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => handleAddMaintenance(alertItem)}
+          accessibilityLabel="Add Service"
+          accessibilityRole="button"
         >
           <Ionicons name="construct" size={18} color="#0066cc" />
           <Text style={styles.actionButtonText}>Add Service</Text>
@@ -427,12 +432,16 @@ export default function PastDueScreen({ appContext, navigation }) {
         <TouchableOpacity
           style={[styles.actionButton, styles.actionButtonSecondary]}
           onPress={() => handleViewVehicle(alertItem.vehicle)}
+          accessibilityLabel="View Vehicle"
+          accessibilityRole="button"
         >
           <Text style={styles.actionButtonTextSecondary}>View Vehicle</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButtonIcon}
           onPress={() => handleIgnoreReminder(alertItem.vehicle, alertItem.serviceType)}
+          accessibilityLabel="Ignore reminder"
+          accessibilityRole="button"
         >
           <Ionicons name="close" size={20} color="#b0b0b0" />
         </TouchableOpacity>
@@ -444,6 +453,7 @@ export default function PastDueScreen({ appContext, navigation }) {
   const vehiclesWithAlerts = Object.keys(vehicleAlerts);
 
   return (
+    <SafeAreaView style={{flex: 1, backgroundColor: theme.colors.background}} edges={['top']}>
     <View style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Large Total Alerts Display - Motivational */}
@@ -464,7 +474,7 @@ export default function PastDueScreen({ appContext, navigation }) {
             <Text style={styles.bulkClearTitle}>
               Looks like we found some historical intervals. Did you just perform a &quot;Full Tune-Up&quot;?
             </Text>
-            <TouchableOpacity style={styles.bulkClearButton} onPress={handleBulkClearHistorical}>
+            <TouchableOpacity style={styles.bulkClearButton} onPress={handleBulkClearHistorical} accessibilityLabel="Mark All Prior Tasks as Complete" accessibilityRole="button">
               <Ionicons name="construct" size={20} color="#fff" />
               <Text style={styles.bulkClearButtonText}>Mark All Prior Tasks as Complete</Text>
             </TouchableOpacity>
@@ -492,6 +502,9 @@ export default function PastDueScreen({ appContext, navigation }) {
                   <TouchableOpacity
                     style={styles.vehicleHeader}
                     onPress={() => toggleVehicleExpand(vehicleId)}
+                    accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${vehicleAlert.vehicle.year} ${vehicleAlert.vehicle.make} ${vehicleAlert.vehicle.model} alerts`}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: isExpanded }}
                   >
                     <View style={styles.vehicleHeaderContent}>
                       <View style={styles.vehicleHeaderInfo}>
@@ -532,6 +545,8 @@ export default function PastDueScreen({ appContext, navigation }) {
                       <TouchableOpacity
                         style={styles.viewVehicleButton}
                         onPress={() => handleViewVehicle(vehicleAlert.vehicle)}
+                        accessibilityLabel="View Full Vehicle Details"
+                        accessibilityRole="button"
                       >
                         <Ionicons name="car" size={18} color="#0066cc" />
                         <Text style={styles.viewVehicleButtonText}>View Full Vehicle Details</Text>
@@ -546,50 +561,50 @@ export default function PastDueScreen({ appContext, navigation }) {
         )}
       </ScrollView>
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   content: {
     flex: 1,
     padding: 16,
   },
   totalAlertsContainer: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#ff6b6b',
+    borderColor: theme.colors.dangerLight,
   },
   totalAlertsNumber: {
     fontSize: 72,
     fontWeight: 'bold',
-    color: '#ff6b6b',
+    color: theme.colors.dangerLight,
     marginBottom: 8,
   },
   totalAlertsLabel: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h3,
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   totalAlertsSubtext: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   bulkClearBanner: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   bulkClearTitle: {
     fontSize: 15,
@@ -601,16 +616,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     gap: 8,
   },
   bulkClearButtonText: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.textPrimary,
   },
   emptyState: {
     alignItems: 'center',
@@ -618,15 +633,14 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyStateTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h2,
+    color: theme.colors.textPrimary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
-    fontSize: 16,
-    color: '#b0b0b0',
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 32,
   },
@@ -634,16 +648,16 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   vehicleGroup: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
   },
   vehicleHeader: {
-    backgroundColor: '#3d3d3d',
-    padding: 16,
+    backgroundColor: theme.colors.surfaceElevated,
+    padding: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#4d4d4d',
+    borderBottomColor: theme.colors.border,
   },
   vehicleHeaderContent: {
     flexDirection: 'row',
@@ -654,14 +668,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   vehicleName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   vehicleAlertCount: {
-    fontSize: 14,
-    color: '#ff6b6b',
+    ...theme.typography.bodySmall,
+    color: theme.colors.dangerLight,
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -670,12 +683,12 @@ const styles = StyleSheet.create({
   },
   alertSummaryItem: {
     fontSize: 13,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   alertSummaryMore: {
     fontSize: 13,
-    color: '#666',
+    color: theme.colors.textTertiary,
     fontStyle: 'italic',
   },
   expandedContent: {
@@ -685,26 +698,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a3a5c',
+    backgroundColor: theme.colors.primaryDark,
     padding: 16,
     borderRadius: 8,
     margin: 16,
     marginTop: 8,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
   },
   viewVehicleButtonText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
     textAlign: 'center',
   },
   alertItem: {
-    padding: 16,
+    padding: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#3d3d3d',
+    borderBottomColor: theme.colors.surfaceElevated,
   },
   alertHeader: {
     flexDirection: 'row',
@@ -713,9 +726,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   alertServiceLabel: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   alertMessage: {
     fontSize: 14,
@@ -732,16 +745,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   alertDetailLabel: {
-    fontSize: 14,
-    color: '#b0b0b0',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   alertDetailValue: {
-    fontSize: 14,
-    color: '#ffffff',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
   alertDetailValueOverdue: {
-    color: '#ff6b6b',
+    color: theme.colors.dangerLight,
     fontWeight: '600',
   },
   inventoryCheck: {
@@ -780,7 +793,7 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -788,20 +801,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionButtonText: {
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   actionButtonSecondary: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#4d4d4d',
+    borderColor: theme.colors.border,
   },
   actionButtonTextSecondary: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   actionButtonIcon: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

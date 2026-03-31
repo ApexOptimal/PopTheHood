@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   TouchableOpacity,
   Image,
   Alert,
   Modal,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { storage } from '../utils/storage';
 import { formatDistanceWithSeparators, formatDistance, formatTorqueString, formatCapacityString, getUnitSystem } from '../utils/unitConverter';
 import ServiceAlerts from '../components/ServiceAlerts';
@@ -23,6 +26,8 @@ import MileageUpdateModal from '../components/MileageUpdateModal';
 import { addMileageEntry } from '../utils/mileageTracking';
 import { theme } from '../theme';
 import { getNextServiceMileage, SERVICE_INTERVAL_LABELS, getServiceTimeline } from '../utils/serviceIntervals';
+import { useProStatus } from '../hooks/useProStatus';
+import logger from '../utils/logger';
 
 // Styles must be defined before components that use them
 const vehicleDetailStyles = StyleSheet.create({
@@ -364,6 +369,46 @@ const vehicleDetailStyles = StyleSheet.create({
   text: {
     fontSize: 16,
     color: theme.colors.textPrimary,
+  },
+  quickRefCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  quickRefTitle: {
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
+    marginBottom: 12,
+  },
+  quickRefGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickRefItem: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: theme.colors.surfaceElevated,
+    minWidth: 72,
+    flex: 1,
+  },
+  quickRefIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  quickRefLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '600',
   },
   specSection: {
     backgroundColor: theme.colors.surface,
@@ -1542,7 +1587,7 @@ function VehicleRecallsSection({ vehicle }) {
           const formattedRecalls = recallsData.map(recall => formatRecall(recall));
           setRecalls(formattedRecalls);
         } catch (error) {
-          console.error('Error fetching recalls:', error);
+          logger.error('Error fetching recalls:', error);
           setRecalls([]);
         } finally {
           setLoadingRecalls(false);
@@ -1614,7 +1659,7 @@ function VehicleRecallsSection({ vehicle }) {
                       Alert.alert('Error', 'Unable to open browser. Please visit nhtsa.gov/recalls manually.');
                     }
                   } catch (error) {
-                    console.error('Error opening URL:', error);
+                    logger.error('Error opening URL:', error);
                     Alert.alert('Error', 'Unable to open browser. Please visit nhtsa.gov/recalls manually.');
                   }
                 }}
@@ -1692,22 +1737,39 @@ function VehicleRecallsSection({ vehicle }) {
 export default function VehicleDetailScreen({ route, navigation, appContext }) {
   const [showPDFExportModal, setShowPDFExportModal] = useState(false);
   const [includeBuildSheet, setIncludeBuildSheet] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [showMileageEdit, setShowMileageEdit] = useState(false);
   const [showBuildSheet, setShowBuildSheet] = useState(false);
-  const { vehicleId } = route.params;
+  const { isPro } = useProStatus();
+  const vehicleId = route.params?.vehicleId;
   const { vehicles, setShowVehicleForm, setEditingVehicle, setShowMaintenanceForm, setSelectedVehicle, setEditingMaintenance, deleteVehicle, updateVehicle, addMaintenance, updateMaintenance, deleteMaintenance, inventory } = appContext;
+
+  // All hooks must be called before any conditional returns
   const [vehicle, setVehicle] = useState(null);
   const [unitSystem, setUnitSystem] = useState(() => getUnitSystem());
+  const [refreshing, setRefreshing] = useState(false);
+  const scrollRef = useRef(null);
+  const sectionRefs = {
+    torque: useRef(null),
+    fluids: useRef(null),
+    hardware: useRef(null),
+    lighting: useRef(null),
+    parts: useRef(null),
+  };
 
   useEffect(() => {
-    loadVehicle();
-    // Reload unit system when screen focuses
+    if (!vehicleId) return;
+    const foundVehicle = vehicles.find(v => v.id === vehicleId);
+    setVehicle(foundVehicle);
     setUnitSystem(getUnitSystem());
   }, [vehicleId, vehicles]);
 
-  const loadVehicle = () => {
+  const onRefresh = () => {
+    setRefreshing(true);
     const foundVehicle = vehicles.find(v => v.id === vehicleId);
-    setVehicle(foundVehicle);
+    setVehicle(foundVehicle ? { ...foundVehicle } : null);
+    setUnitSystem(getUnitSystem());
+    setTimeout(() => setRefreshing(false), 300);
   };
 
   const handleMileageUpdate = (newMileage, skipped) => {
@@ -1717,6 +1779,19 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
       updateVehicle(vehicle.id, updatedVehicle);
     }
   };
+
+  if (!vehicleId) {
+    return (
+      <View style={vehicleDetailStyles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ color: theme.colors.dangerLight, fontSize: 16, marginBottom: 16 }}>Vehicle not found</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={{ color: theme.colors.primary, fontSize: 16 }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (!vehicle) {
     return (
@@ -1728,8 +1803,47 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
 
   const vehicleImage = vehicle.vehicleImage || vehicle.images?.[0]?.data || vehicle.images?.find(img => img.id === vehicle.featuredImageId)?.data || null;
 
+  const scrollToSection = (key) => {
+    sectionRefs[key]?.current?.measureLayout(
+      scrollRef.current?.getInnerViewRef?.() || scrollRef.current,
+      (x, y) => {
+        scrollRef.current?.scrollTo({ y: y - 16, animated: true });
+      },
+      () => {}
+    );
+  };
+
+  // Check which spec sections have data
+  const hasTorque = !!(vehicle.torqueValues?.suspension && Object.values(vehicle.torqueValues.suspension).some(Boolean)) ||
+                    !!(vehicle.torqueValues?.engine && Object.values(vehicle.torqueValues.engine).some(Boolean));
+  const hasFluids = !!(vehicle.recommendedFluids && Object.values(vehicle.recommendedFluids).some(Boolean));
+  const hasHardware = !!(vehicle.hardware && Object.values(vehicle.hardware).some(Boolean));
+  const hasLighting = !!(vehicle.lighting && Object.values(vehicle.lighting).some(Boolean));
+  const hasParts = !!(vehicle.partsSKUs && Object.values(vehicle.partsSKUs).some(Boolean));
+  const hasAnySpecs = hasTorque || hasFluids || hasHardware || hasLighting || hasParts;
+
+  const quickRefItems = [
+    { key: 'torque', icon: 'hammer-outline', label: 'Torque Specs', has: hasTorque },
+    { key: 'fluids', icon: 'water-outline', label: 'Fluids', has: hasFluids },
+    { key: 'hardware', icon: 'settings-outline', label: 'Hardware', has: hasHardware },
+    { key: 'lighting', icon: 'bulb-outline', label: 'Lighting', has: hasLighting },
+    { key: 'parts', icon: 'list-outline', label: 'Parts', has: hasParts },
+  ];
+
   return (
-    <ScrollView style={vehicleDetailStyles.container}>
+    <SafeAreaView style={{flex: 1, backgroundColor: theme.colors.background}} edges={['top']}>
+    <ScrollView
+      ref={scrollRef}
+      style={vehicleDetailStyles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.colors.primary}
+          colors={[theme.colors.primary]}
+        />
+      }
+    >
       <View style={vehicleDetailStyles.content}>
         {/* Header Actions */}
         <View style={vehicleDetailStyles.headerActions}>
@@ -1904,7 +2018,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
               </View>
             )}
 
-            {/* Build Sheet */}
+            {/* Modifications (vehicle.buildSheet) */}
             {vehicle.buildSheet && (
               vehicle.buildSheet.engine ||
               vehicle.buildSheet.intake || 
@@ -1923,7 +2037,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                   <View style={vehicleDetailStyles.buildSheetHeaderLeft}>
                     <Ionicons name="construct" size={20} color={theme.colors.primary} />
                     <Text style={vehicleDetailStyles.buildSheetTitle}>
-                      {vehicle.model || 'Vehicle'} Build Sheet
+                      {vehicle.model || 'Vehicle'} Modifications
                     </Text>
                   </View>
                   <Ionicons 
@@ -2007,6 +2121,28 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
           }}
         />
 
+        {/* Quick Reference - Jump to Specs */}
+        {hasAnySpecs && (
+          <View style={vehicleDetailStyles.quickRefCard}>
+            <Text style={vehicleDetailStyles.quickRefTitle}>Quick Reference</Text>
+            <View style={vehicleDetailStyles.quickRefGrid}>
+              {quickRefItems.filter(item => item.has).map((item) => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={vehicleDetailStyles.quickRefItem}
+                  onPress={() => scrollToSection(item.key)}
+                  activeOpacity={0.7}
+                >
+                  <View style={vehicleDetailStyles.quickRefIconWrap}>
+                    <Ionicons name={item.icon} size={22} color={theme.colors.primary} />
+                  </View>
+                  <Text style={vehicleDetailStyles.quickRefLabel}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Vehicle Recalls */}
         <VehicleRecallsSection vehicle={vehicle} />
 
@@ -2014,22 +2150,32 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
         <ServiceIntervalsSection vehicle={vehicle} />
 
         {/* Recommended Fluids */}
-        <RecommendedFluidsSection vehicle={vehicle} />
+        <View ref={sectionRefs.fluids} collapsable={false}>
+          <RecommendedFluidsSection vehicle={vehicle} />
+        </View>
 
         {/* Torque Values */}
-        <TorqueValuesSection vehicle={vehicle} />
+        <View ref={sectionRefs.torque} collapsable={false}>
+          <TorqueValuesSection vehicle={vehicle} />
+        </View>
 
         {/* Tires & Wheels */}
         <TiresWheelsSection vehicle={vehicle} />
 
         {/* Hardware */}
-        <HardwareSection vehicle={vehicle} />
+        <View ref={sectionRefs.hardware} collapsable={false}>
+          <HardwareSection vehicle={vehicle} />
+        </View>
 
         {/* Lighting */}
-        <LightingSection vehicle={vehicle} />
+        <View ref={sectionRefs.lighting} collapsable={false}>
+          <LightingSection vehicle={vehicle} />
+        </View>
 
         {/* Parts SKUs */}
-        <PartsSKUsSection vehicle={vehicle} />
+        <View ref={sectionRefs.parts} collapsable={false}>
+          <PartsSKUsSection vehicle={vehicle} />
+        </View>
 
         {/* Maintenance Records */}
         <View style={vehicleDetailStyles.maintenanceSection}>
@@ -2053,22 +2199,44 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
             <View style={vehicleDetailStyles.exportButtons}>
               <TouchableOpacity
                 style={vehicleDetailStyles.exportButton}
+                disabled={isExporting}
                 onPress={async () => {
+                  setIsExporting(true);
                   try {
                     await exportMaintenanceToCSV(vehicle);
                     Alert.alert('Success', 'Maintenance records exported to CSV successfully!');
                   } catch (error) {
                     Alert.alert('Export Error', `Failed to export CSV: ${error.message}`);
+                  } finally {
+                    setIsExporting(false);
                   }
                 }}
               >
-                <Ionicons name="document-text" size={18} color={theme.colors.primary} />
+                {isExporting ? (
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : (
+                  <Ionicons name="document-text" size={18} color={theme.colors.primary} />
+                )}
                 <Text style={vehicleDetailStyles.exportButtonText}>Export CSV</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={vehicleDetailStyles.exportButton}
                 onPress={() => {
+                  if (!isPro) {
+                    Alert.alert(
+                      'Pro Feature',
+                      'PDF report export requires Pop the Hood Pro.',
+                      [
+                        {
+                          text: 'Upgrade',
+                          onPress: () => navigation.navigate('Vehicles', { screen: 'Subscription' }),
+                        },
+                        { text: 'Cancel', style: 'cancel' },
+                      ]
+                    );
+                    return;
+                  }
                   setShowPDFExportModal(true);
                 }}
               >
@@ -2088,7 +2256,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                     <Text style={vehicleDetailStyles.modalTitle}>Export PDF Options</Text>
                     
                     <View style={vehicleDetailStyles.modalOption}>
-                      <Text style={vehicleDetailStyles.modalOptionText}>Include Build Sheet</Text>
+                      <Text style={vehicleDetailStyles.modalOptionText}>Include Modifications</Text>
                       <Switch
                         value={includeBuildSheet}
                         onValueChange={setIncludeBuildSheet}
@@ -2106,17 +2274,25 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[vehicleDetailStyles.modalButton, vehicleDetailStyles.modalButtonConfirm]}
+                        disabled={isExporting}
                 onPress={async () => {
+                          setIsExporting(true);
                           setShowPDFExportModal(false);
                   try {
                             await exportMaintenanceToPDF(vehicle, includeBuildSheet);
                     Alert.alert('Success', 'Maintenance records exported to PDF successfully!');
                   } catch (error) {
                     Alert.alert('Export Error', `Failed to export PDF: ${error.message}`);
+                  } finally {
+                    setIsExporting(false);
                   }
                 }}
               >
-                        <Text style={[vehicleDetailStyles.modalButtonText, { color: theme.colors.textPrimary }]}>Export</Text>
+                        {isExporting ? (
+                          <ActivityIndicator size="small" color={theme.colors.textPrimary} />
+                        ) : (
+                          <Text style={[vehicleDetailStyles.modalButtonText, { color: theme.colors.textPrimary }]}>Export</Text>
+                        )}
               </TouchableOpacity>
                     </View>
                   </View>
@@ -2150,6 +2326,7 @@ export default function VehicleDetailScreen({ route, navigation, appContext }) {
         />
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

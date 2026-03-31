@@ -289,12 +289,21 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
             <Text style={styles.title}>{isEditing ? 'Edit Inventory Item' : 'Add Inventory Item'}</Text>
             <View style={styles.headerButtons}>
               {isEditing && (
-                <TouchableOpacity style={styles.headerSaveButton} onPress={handleSubmit}>
+                <TouchableOpacity
+                  style={styles.headerSaveButton}
+                  onPress={handleSubmit}
+                  accessibilityLabel="Save changes"
+                  accessibilityRole="button"
+                >
                   <Ionicons name="checkmark" size={20} color="#fff" />
                   <Text style={styles.headerSaveButtonText}>Save Changes</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => handleAnimatedClose(onCancel)}>
+              <TouchableOpacity
+                onPress={() => handleAnimatedClose(onCancel)}
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -305,11 +314,12 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
             style={styles.keyboardView}
             keyboardVerticalOffset={Platform.OS === 'ios' ? -150 : 20}
           >
-            <ScrollView 
-              style={styles.content} 
+            <ScrollView
+              style={styles.content}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
             {/* Barcode Scanner */}
             <View style={styles.formGroup}>
@@ -317,6 +327,8 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
               <TouchableOpacity
                 style={styles.scanButton}
                 onPress={() => setShowBarcodeScanner(true)}
+                accessibilityLabel="Scan product barcode"
+                accessibilityRole="button"
               >
                 <Ionicons name="barcode-outline" size={24} color="#0066cc" />
                 <Text style={styles.scanButtonText}>Scan Product Barcode</Text>
@@ -330,6 +342,8 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 <TouchableOpacity
                   style={styles.toggleButton}
                   onPress={() => setShowCleaningProducts(!showCleaningProducts)}
+                  accessibilityLabel={showCleaningProducts ? 'Hide cleaning products' : 'Show cleaning products'}
+                  accessibilityRole="button"
                 >
                   <Ionicons 
                     name={showCleaningProducts ? "eye" : "eye-off"} 
@@ -344,6 +358,9 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
               <TouchableOpacity
                 style={styles.pickerButton}
                 onPress={() => setShowCommonItemsPicker(true)}
+                accessibilityLabel="Select common item"
+                accessibilityRole="button"
+                accessibilityHint="Opens list of common inventory items"
               >
                 <Text style={[styles.pickerButtonText, !formData.name && styles.pickerButtonPlaceholder]}>
                   {formData.name || 'Select a common item to auto-fill...'}
@@ -359,6 +376,7 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 value={formData.name}
                 onChangeText={(text) => setFormData({ ...formData, name: text })}
                 placeholder="e.g., Motor Oil 5W-30"
+                accessibilityLabel="Item Name"
                 placeholderTextColor="#666"
               />
             </View>
@@ -370,6 +388,7 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 value={formData.quantity}
                 onChangeText={(text) => setFormData({ ...formData, quantity: text })}
                 placeholder="1"
+                accessibilityLabel="Quantity"
                 placeholderTextColor="#666"
                 keyboardType="numeric"
               />
@@ -382,6 +401,7 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 value={formData.unit}
                 onChangeText={(text) => setFormData({ ...formData, unit: text })}
                 placeholder="e.g., quarts, units, bottles"
+                accessibilityLabel="Unit"
                 placeholderTextColor="#666"
               />
             </View>
@@ -393,6 +413,7 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 value={formData.category}
                 onChangeText={(text) => setFormData({ ...formData, category: text })}
                 placeholder="e.g., Fluids, Filters, Parts"
+                accessibilityLabel="Category"
                 placeholderTextColor="#666"
               />
             </View>
@@ -404,6 +425,7 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 value={formData.location}
                 onChangeText={(text) => setFormData({ ...formData, location: text })}
                 placeholder="Where is this stored?"
+                accessibilityLabel="Location"
                 placeholderTextColor="#666"
               />
             </View>
@@ -418,6 +440,7 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 value={formData.alertThreshold}
                 onChangeText={(text) => setFormData({ ...formData, alertThreshold: text })}
                 placeholder="e.g., 2"
+                accessibilityLabel="Low stock alert threshold"
                 placeholderTextColor="#666"
                 keyboardType="numeric"
               />
@@ -432,13 +455,15 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 </Text>
                 <View style={styles.vehicleCheckboxes}>
                   {vehicles.map(vehicle => (
-                    <TouchableOpacity
-                      key={vehicle.id}
-                      style={[
-                        styles.vehicleCheckbox,
-                        formData.vehicleIds.includes(vehicle.id) && styles.vehicleCheckboxSelected
-                      ]}
-                      onPress={() => {
+<TouchableOpacity
+                    key={vehicle.id}
+                    style={[
+                      styles.vehicleCheckbox,
+                      formData.vehicleIds.includes(vehicle.id) && styles.vehicleCheckboxSelected
+                    ]}
+                    accessibilityLabel={`Assign to ${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                    accessibilityRole="checkbox"
+                    onPress={() => {
                         const currentIds = formData.vehicleIds || [];
                         const newIds = currentIds.includes(vehicle.id)
                           ? currentIds.filter(id => id !== vehicle.id)
@@ -466,12 +491,19 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
           </KeyboardAvoidingView>
 
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => handleAnimatedClose(onCancel)}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => handleAnimatedClose(onCancel)}
+              accessibilityLabel="Cancel"
+              accessibilityRole="button"
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             {lastScannedBarcode && !isEditing && (
-              <TouchableOpacity 
-                style={styles.scanAndAddButton} 
+<TouchableOpacity
+                style={styles.scanAndAddButton}
+                accessibilityLabel="Add item and scan next"
+                accessibilityRole="button"
                 onPress={() => {
                   // Validate and submit the current item
                   if (!formData.name) {
@@ -507,7 +539,12 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 <Text style={styles.scanAndAddButtonText}>Add & Scan Next</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmit}
+              accessibilityLabel={isEditing ? 'Save changes' : 'Add item'}
+              accessibilityRole="button"
+            >
               <Text style={styles.submitButtonText}>{isEditing ? 'Save Changes' : 'Add Item'}</Text>
             </TouchableOpacity>
           </View>
@@ -533,20 +570,26 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
           style={styles.pickerModalOverlay} 
           onPress={() => setShowCommonItemsPicker(false)}
         >
-          <View style={styles.pickerModalContent} onStartShouldSetResponder={() => true}>
+          <Pressable style={styles.pickerModalContent} onPress={() => {}}>
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Select Common Item</Text>
-              <TouchableOpacity onPress={() => setShowCommonItemsPicker(false)}>
+              <TouchableOpacity
+                onPress={() => setShowCommonItemsPicker(false)}
+                accessibilityLabel="Close picker"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
             <View style={styles.pickerModalFilter}>
-              <TouchableOpacity
+<TouchableOpacity
                 style={styles.toggleButton}
                 onPress={() => setShowCleaningProducts(!showCleaningProducts)}
+                accessibilityLabel={showCleaningProducts ? 'Hide cleaning products' : 'Show cleaning products'}
+                accessibilityRole="button"
               >
-                <Ionicons 
-                  name={showCleaningProducts ? "eye" : "eye-off"} 
+                <Ionicons
+                  name={showCleaningProducts ? "eye" : "eye-off"}
                   size={18} 
                   color="#0066cc" 
                 />
@@ -562,6 +605,8 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 <TouchableOpacity
                   style={styles.pickerItem}
                   onPress={() => handleCommonItemSelect(item)}
+                  accessibilityLabel={`Select ${item.name}`}
+                  accessibilityRole="button"
                 >
                   <View style={styles.pickerItemContent}>
                     <Text style={styles.pickerItemName}>{item.name}</Text>
@@ -572,8 +617,9 @@ export default function InventoryFormModal({ vehicles = [], initialData = null, 
                 </TouchableOpacity>
               )}
               style={styles.pickerList}
+              nestedScrollEnabled={true}
             />
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </Modal>

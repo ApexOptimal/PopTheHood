@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { lookupBarcode } from '../utils/barcodeLookup';
 import { identifyItemFromImage, identifyItemFromImageAndBarcode } from '../utils/visionAI';
+import { theme } from '../theme';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const ANIMATION_DURATION = 375;
@@ -145,24 +146,18 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
   };
 
   const handleTakePhoto = async (barcode = null) => {
-    console.log('========== handleTakePhoto STARTED ==========');
-    console.log('Barcode parameter:', barcode);
-    
     try {
       setIsLoading(true);
-      console.log('Requesting camera permissions...');
-      
+
       // Request camera permissions for photo
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        console.log('Camera permission denied');
         Alert.alert('Permission Required', 'Camera permission is needed to take photos');
         setIsLoading(false);
         setScanned(false);
         return;
       }
 
-      console.log('Camera permission granted. Launching camera...');
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaType?.Images ?? 'images',
         allowsEditing: false,
@@ -171,10 +166,7 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
         exif: false,
       });
 
-      console.log('Camera result:', result.canceled ? 'CANCELED' : 'SUCCESS');
-      
       if (result.canceled || !result.assets || result.assets.length === 0) {
-        console.log('Photo was canceled or no assets');
         setIsLoading(false);
         setScanned(false);
         return;
@@ -182,39 +174,19 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
 
       // Use Gemini AI to identify product from image
       const imageUri = result.assets[0].uri;
-      console.log('========== PHOTO TAKEN ==========');
-      console.log('Image URI:', imageUri);
-      
+
       if (!imageUri) {
         throw new Error('Could not get image URI from camera');
       }
-      
-      console.log('Calling AI identification function...');
-      console.log('Barcode provided:', barcode || 'none');
-      
-      const productData = barcode 
+
+      const productData = barcode
         ? await identifyItemFromImageAndBarcode(imageUri, barcode)
         : await identifyItemFromImage(imageUri);
-      
-      console.log('AI identification SUCCESS!');
-      console.log('Product data:', JSON.stringify(productData, null, 2));
-      console.log('==================================');
-      
+
       setIsLoading(false);
       onScan(productData);
       setScanned(false);
     } catch (error) {
-      console.error('========== ERROR IN PHOTO AI ==========');
-      console.error('Error occurred at:', new Date().toISOString());
-      console.error('Error name:', error?.name);
-      console.error('Error message:', error?.message);
-      console.error('Error stack:', error?.stack);
-      console.error('Full error object:', error);
-      if (error?.toString) {
-        console.error('Error toString:', error.toString());
-      }
-      console.error('========================================');
-      
       setIsLoading(false);
       Alert.alert(
         'AI Identification Failed',
@@ -242,7 +214,7 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
         <Animated.View style={[styles.container, { width: '100%', opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.content}>
             <Text style={styles.message}>Requesting camera permission...</Text>
-            <ActivityIndicator size="large" color="#0066cc" />
+            <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         </Animated.View>
       </Modal>
@@ -254,7 +226,7 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
       <Modal visible={visible} transparent={true} animationType="none">
         <Animated.View style={[styles.container, { width: '100%', opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.content}>
-            <Ionicons name="camera-outline" size={64} color="#0066cc" style={styles.icon} />
+            <Ionicons name="camera-outline" size={64} color={theme.colors.primary} style={styles.icon} />
             <Text style={styles.title}>Camera Permission Required</Text>
             <Text style={styles.message}>
               We need access to your camera to scan barcodes.
@@ -277,7 +249,7 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Scan Barcode</Text>
           <TouchableOpacity onPress={() => handleAnimatedClose(onClose)}>
-            <Ionicons name="close" size={28} color="#fff" />
+            <Ionicons name="close" size={28} color={theme.colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -309,7 +281,7 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
             </View>
             {isLoading && (
               <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color="#0066cc" />
+                <ActivityIndicator size="large" color={theme.colors.primary} />
                 <Text style={styles.loadingText}>Looking up product...</Text>
               </View>
             )}
@@ -325,7 +297,7 @@ export default function BarcodeScanner({ visible, onScan, onClose }) {
             onPress={() => handleTakePhoto(null)}
             disabled={isLoading}
           >
-            <Ionicons name="camera" size={20} color="#fff" />
+            <Ionicons name="camera" size={20} color={theme.colors.textPrimary} />
             <Text style={styles.photoButtonText}>Take Photo for AI ID</Text>
           </TouchableOpacity>
           {scanned && !isLoading && (
@@ -350,14 +322,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: theme.colors.surfaceElevated,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.textPrimary,
   },
   cameraContainer: {
     flex: 1,
@@ -386,7 +358,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 30,
     height: 30,
-    borderColor: '#0066cc',
+    borderColor: theme.colors.primary,
     borderWidth: 3,
   },
   topLeft: {
@@ -419,29 +391,29 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     marginTop: 16,
     fontSize: 16,
   },
   footer: {
     padding: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: theme.colors.surfaceElevated,
   },
   instructions: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
     fontSize: 16,
     marginBottom: 8,
   },
   scanAgainText: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     textAlign: 'center',
     fontSize: 14,
     marginTop: 8,
@@ -450,7 +422,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -458,7 +430,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   photoButtonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -467,7 +439,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.colors.background,
   },
   icon: {
     marginBottom: 20,
@@ -475,25 +447,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.textPrimary,
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
     fontSize: 16,
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 30,
   },
   button: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 8,
     marginBottom: 12,
   },
   buttonText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -502,7 +474,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   cancelButtonText: {
-    color: '#b0b0b0',
+    color: theme.colors.textSecondary,
     fontSize: 16,
   },
 });

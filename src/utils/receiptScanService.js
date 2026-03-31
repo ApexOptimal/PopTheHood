@@ -6,12 +6,15 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as FileSystem from 'expo-file-system/legacy';
 import { listAvailableModels } from './visionAI';
+import { requireNetwork } from './network';
+import { checkRateLimit, recordCall } from './rateLimit';
+import { getEnv } from './env';
 
 let genAI = null;
 
 function getGenAI() {
   if (genAI) return genAI;
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+  const apiKey = getEnv('EXPO_PUBLIC_GEMINI_API_KEY');
   if (!apiKey) throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is required for receipt scanning.');
   genAI = new GoogleGenerativeAI(apiKey);
   return genAI;
@@ -104,6 +107,11 @@ If you cannot read the image or find totals, use null and hasMileage: false.`;
  * @returns {Promise<{ hasMileage: boolean, mileage: number|null, totalCost: number|null, rawText: string }>}
  */
 export async function scanReceipt(imageUri) {
+  await requireNetwork('Receipt scanning');
+  const limit = checkRateLimit('receipt-scan', { cooldownMs: 3000, dailyLimit: 30 });
+  if (!limit.allowed) throw new Error(limit.reason);
+  recordCall('receipt-scan');
+
   const base64 = await imageUriToBase64(imageUri);
   const mimeType = getMimeType(imageUri);
   const ai = getGenAI();
@@ -124,7 +132,10 @@ export async function scanReceipt(imageUri) {
 
   let result;
   try {
-    result = await model.generateContent(parts);
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Receipt scan timed out. Please check your connection and try again.')), 30000)
+    );
+    result = await Promise.race([model.generateContent(parts), timeout]);
   } catch (e) {
     throw new Error(`Receipt scan failed: ${e.message || 'Unknown error'}`);
   }

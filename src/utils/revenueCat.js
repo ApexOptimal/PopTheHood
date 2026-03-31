@@ -2,6 +2,8 @@
 // Handles subscriptions, entitlements, and customer info
 
 import { Platform } from 'react-native';
+import logger from './logger';
+import { getEnv } from './env';
 
 // Conditional import to prevent crashes if native modules aren't linked
 let Purchases = null;
@@ -39,8 +41,10 @@ const getPurchases = () => {
 // Run: npx expo install expo-build-properties
 // Then add to app.json plugins array
 
-// RevenueCat API Key (test key)
-const REVENUECAT_API_KEY = 'test_SCIzthhmYCAngNMYGAboUdDTdfK';
+// RevenueCat API Keys – loaded from env (platform-specific)
+const REVENUECAT_API_KEY = Platform.OS === 'ios'
+  ? (getEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY') || getEnv('EXPO_PUBLIC_REVENUECAT_API_KEY'))
+  : getEnv('EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY');
 
 // Entitlement identifier
 const ENTITLEMENT_ID = 'Pop the Hood Pro';
@@ -95,6 +99,9 @@ export const initializeRevenueCat = async (userId = null) => {
     }
 
     // Configure RevenueCat with API key
+    if (!REVENUECAT_API_KEY) {
+      return { success: true, skipped: true };
+    }
     try {
       await PurchasesModule.configure({ apiKey: REVENUECAT_API_KEY });
     } catch (configError) {
@@ -136,7 +143,7 @@ export const initializeRevenueCat = async (userId = null) => {
 
     return { success: true };
   } catch (error) {
-    console.error('Error initializing RevenueCat:', error);
+    logger.error('Error initializing RevenueCat:', error);
     return { success: false, error: error.message };
   }
 };
@@ -155,7 +162,7 @@ export const getCustomerInfo = async () => {
       isPro: customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined,
     };
   } catch (error) {
-    console.error('Error getting customer info:', error);
+    logger.error('Error getting customer info:', error);
     return {
       success: false,
       error: error.message,
@@ -174,7 +181,7 @@ export const hasProEntitlement = async () => {
     const customerInfo = await PurchasesModule.getCustomerInfo();
     return customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
   } catch (error) {
-    console.error('Error checking entitlement:', error);
+    logger.error('Error checking entitlement:', error);
     return false;
   }
 };
@@ -193,7 +200,7 @@ export const getOfferings = async () => {
       currentOffering: offerings.current,
     };
   } catch (error) {
-    console.error('Error getting offerings:', error);
+    logger.error('Error getting offerings:', error);
     return {
       success: false,
       error: error.message,
@@ -255,7 +262,7 @@ export const purchasePackage = async (packageToPurchase) => {
     }
 
     // Handle other errors
-    console.error('Error purchasing package:', error);
+    logger.error('Error purchasing package:', error);
     return {
       success: false,
       error: error.message || error.userInfo?.message || 'Purchase failed. Please try again.',
@@ -283,7 +290,7 @@ export const restorePurchases = async () => {
       isPro,
     };
   } catch (error) {
-    console.error('Error restoring purchases:', error);
+    logger.error('Error restoring purchases:', error);
     return {
       success: false,
       error: error.message,
@@ -298,7 +305,7 @@ export const getPurchaseDate = (customerInfo, productId) => {
     const purchaseDate = customerInfo.purchaseDate;
     return purchaseDate || null;
   } catch (error) {
-    console.error('Error getting purchase date:', error);
+    logger.error('Error getting purchase date:', error);
     return null;
   }
 };
@@ -321,7 +328,7 @@ export const isSubscriptionActive = (customerInfo) => {
     
     return willRenew !== false;
   } catch (error) {
-    console.error('Error checking subscription status:', error);
+    logger.error('Error checking subscription status:', error);
     return false;
   }
 };
@@ -348,7 +355,7 @@ export const getActiveSubscriptionInfo = (customerInfo) => {
       latestPurchaseDate: entitlement.latestPurchaseDate,
     };
   } catch (error) {
-    console.error('Error getting subscription info:', error);
+    logger.error('Error getting subscription info:', error);
     return {
       isActive: false,
       productIdentifier: null,
@@ -374,7 +381,7 @@ export const logOut = async () => {
       customerInfo,
     };
   } catch (error) {
-    console.error('Error logging out:', error);
+    logger.error('Error logging out:', error);
     return {
       success: false,
       error: error.message,
@@ -395,7 +402,7 @@ export const setUserAttributes = async (attributes) => {
     await PurchasesModule.setAttributes(attributes);
     return { success: true };
   } catch (error) {
-    console.error('Error setting user attributes:', error);
+    logger.error('Error setting user attributes:', error);
     return { success: false, error: error.message };
   }
 };
@@ -403,20 +410,10 @@ export const setUserAttributes = async (attributes) => {
 // Add customer info update listener
 // Returns a function to remove the listener
 export const addCustomerInfoUpdateListener = (callback) => {
-  if (!isPurchasesAvailable || !Purchases) {
-    if (__DEV__) {
-      console.warn('RevenueCat not available - cannot add listener');
-    }
-    return () => {}; // Return no-op function
-  }
-
   try {
     const PurchasesModule = getPurchases();
     if (!isPurchasesAvailable || !PurchasesModule) {
-      if (__DEV__) {
-        console.warn('RevenueCat not available - cannot add listener');
-      }
-      return () => {}; // Return no-op function
+      return () => {};
     }
     const listener = PurchasesModule.addCustomerInfoUpdateListener((customerInfo) => {
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
@@ -437,8 +434,8 @@ export const addCustomerInfoUpdateListener = (callback) => {
       }
     };
   } catch (error) {
-    console.error('Error adding customer info listener:', error);
-    return () => {}; // Return no-op function
+    logger.error('Error adding customer info listener:', error);
+    return () => {};
   }
 };
 
@@ -460,7 +457,7 @@ export const syncCustomerInfo = async () => {
       isPro,
     };
   } catch (error) {
-    console.error('Error syncing customer info:', error);
+    logger.error('Error syncing customer info:', error);
     return {
       success: false,
       error: error.message,

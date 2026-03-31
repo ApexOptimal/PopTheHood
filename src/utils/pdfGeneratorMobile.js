@@ -1,10 +1,11 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import logger from './logger';
 
 /**
  * Generate HTML content for maintenance records PDF (mobile)
  * @param {Object} vehicle - Vehicle object with maintenance records
- * @param {boolean} includeBuildSheet - Whether to include build sheet in PDF
+ * @param {boolean} includeBuildSheet - Whether to include modifications in PDF
  * @returns {string} HTML content
  */
 function generateMaintenanceHTML(vehicle, includeBuildSheet = false) {
@@ -139,7 +140,7 @@ function generateMaintenanceHTML(vehicle, includeBuildSheet = false) {
           ${vehicle.vin ? `<div class="info-row"><span class="info-label">VIN:</span><span class="info-value">${vehicle.vin}</span></div>` : ''}
           ${includeBuildSheet && vehicle.buildSheet ? `
             <div class="section" style="margin-top: 20px;">
-              <div class="section-title">Build Sheet</div>
+              <div class="section-title">Modifications</div>
               ${vehicle.buildSheet.engine ? `<div class="info-row"><span class="info-label">Engine:</span><span class="info-value">${vehicle.buildSheet.engine.replace(/\n/g, '<br>')}</span></div>` : ''}
               ${vehicle.buildSheet.intake ? `<div class="info-row"><span class="info-label">Intake:</span><span class="info-value">${vehicle.buildSheet.intake.replace(/\n/g, '<br>')}</span></div>` : ''}
               ${vehicle.buildSheet.exhaust ? `<div class="info-row"><span class="info-label">Exhaust:</span><span class="info-value">${vehicle.buildSheet.exhaust.replace(/\n/g, '<br>')}</span></div>` : ''}
@@ -172,7 +173,7 @@ function generateMaintenanceHTML(vehicle, includeBuildSheet = false) {
 /**
  * Generate PDF from HTML using expo-print (mobile)
  * @param {Object} vehicle - Vehicle object with maintenance records
- * @param {boolean} includeBuildSheet - Whether to include build sheet in PDF
+ * @param {boolean} includeBuildSheet - Whether to include modifications in PDF
  */
 export async function generateMaintenancePDFMobile(vehicle, includeBuildSheet = false) {
   try {
@@ -194,7 +195,7 @@ export async function generateMaintenancePDFMobile(vehicle, includeBuildSheet = 
 
     return { success: true, fileUri: uri };
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    logger.error('Error generating PDF:', error);
     throw error;
   }
 }

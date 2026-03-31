@@ -2,6 +2,7 @@
  * Shared Service Interval Calculations
  * Single source of truth for next-service-due logic.
  */
+import { normalizeServiceType, parseValidDate } from './serviceCalculations';
 
 /** Maps interval keys to maintenance form type strings */
 export const SERVICE_TYPE_TO_MAINTENANCE_TYPE = {
@@ -56,13 +57,34 @@ const RECORD_TYPE_MAP = {
 export function getNextServiceMileage(vehicle, serviceType, interval) {
   if (!interval) return null;
 
-  const currentMileage = parseInt(vehicle?.mileage) || 0;
+  const currentMileage = parseInt(vehicle?.mileage, 10) || 0;
   const estimates = vehicle?.estimatedLastService || {};
   const maintenanceRecords = vehicle?.maintenanceRecords || [];
 
-  // "Current on Maintenance" = all factory intervals done up to current mileage
+  // Always check for actual maintenance records first — they have real mileage data
+  const serviceRecords = maintenanceRecords.filter(r => {
+    if (!r.type) return false;
+    return normalizeServiceType(r.type, serviceType);
+  });
+
+  if (serviceRecords.length > 0) {
+    // Find the most recent record with mileage (sort by date descending)
+    const recordsWithMileage = serviceRecords
+      .filter(r => r.mileage)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (recordsWithMileage.length > 0) {
+      const lastServiceMileage = parseInt(recordsWithMileage[0].mileage, 10);
+      return lastServiceMileage + interval;
+    }
+  }
+
+  // "Current on Maintenance" = all factory intervals done up to the mileage when vehicle was added
   if (vehicle?.maintenanceHistoryStatus === 'current') {
-    return currentMileage + interval;
+    const baseMileage = vehicle.mileageHistory?.[0]?.mileage || currentMileage;
+    const milesSinceBase = Math.max(0, currentMileage - baseMileage);
+    const cyclesCompleted = Math.floor(milesSinceBase / interval);
+    return baseMileage + (cyclesCompleted + 1) * interval;
   }
 
   const lastService = estimates[serviceType];
@@ -75,20 +97,10 @@ export function getNextServiceMileage(vehicle, serviceType, interval) {
     return currentMileage + interval;
   }
 
-  const lastServiceDate = new Date(lastService);
-  const maintenanceType = RECORD_TYPE_MAP[serviceType];
-  const serviceRecords = maintenanceRecords.filter(r => {
-    if (!r.type) return false;
-    const recordType = r.type.toLowerCase();
-    if (serviceType === 'airFilter' || serviceType === 'cabinFilter') {
-      return recordType.includes('filter');
-    }
-    if (serviceType === 'coolant' || serviceType === 'brakeFluid') {
-      return recordType.includes(serviceType.toLowerCase().replace('fluid', '')) && recordType.includes('fluid');
-    }
-    return recordType.includes(maintenanceType?.toLowerCase().split(' ')[0]);
-  });
+  const lastServiceDate = parseValidDate(lastService);
+  if (!lastServiceDate) return currentMileage + interval;
 
+  // Check for records matching the estimatedLastService date (records without mileage)
   if (serviceRecords.length > 0) {
     const sortedRecords = serviceRecords.sort((a, b) => {
       const dateA = new Date(a.date);
@@ -99,15 +111,20 @@ export function getNextServiceMileage(vehicle, serviceType, interval) {
     });
 
     if (sortedRecords[0].mileage) {
-      const lastServiceMileage = parseInt(sortedRecords[0].mileage);
+      const lastServiceMileage = parseInt(sortedRecords[0].mileage, 10);
       return lastServiceMileage + interval;
     }
   }
 
   const daysSince = (new Date() - lastServiceDate) / (1000 * 60 * 60 * 24);
-  const createdAt = vehicle?.createdAt ? new Date(vehicle.createdAt) : new Date();
-  const daysSinceCreation = (new Date() - createdAt) / (1000 * 60 * 60 * 24);
-  const estimatedMilesPerDay = daysSinceCreation > 0 ? currentMileage / daysSinceCreation : 0;
+  const createdAtDate = parseValidDate(vehicle?.createdAt);
+  if (!createdAtDate) return currentMileage + interval;
+  const daysSinceCreation = (new Date() - createdAtDate) / (1000 * 60 * 60 * 24);
+  // Use creation-based rate only if vehicle has been tracked long enough for a meaningful rate;
+  // otherwise fall back to national average (~41 miles/day ≈ 15k/year)
+  const estimatedMilesPerDay = daysSinceCreation > 30 && currentMileage > 0
+    ? currentMileage / daysSinceCreation
+    : 41;
   const lastServiceMileage = Math.max(0, currentMileage - (estimatedMilesPerDay * daysSince));
   return lastServiceMileage + interval;
 }
@@ -126,8 +143,8 @@ export function getUpcomingServices(vehicle) {
       type: key,
       label: SERVICE_INTERVAL_LABELS[key] || key,
       maintenanceType: SERVICE_TYPE_TO_MAINTENANCE_TYPE[key] || key,
-      interval: parseInt(serviceIntervals[key]),
-      nextService: getNextServiceMileage(vehicle, key, parseInt(serviceIntervals[key])),
+      interval: parseInt(serviceIntervals[key], 10),
+      nextService: getNextServiceMileage(vehicle, key, parseInt(serviceIntervals[key], 10)),
     }))
     .filter(item => item.nextService !== null)
     .sort((a, b) => a.nextService - b.nextService);
@@ -142,12 +159,12 @@ export function getUpcomingServices(vehicle) {
  */
 export function getServiceTimeline(vehicle) {
   const serviceIntervals = vehicle?.serviceIntervals || {};
-  const currentMileage = parseInt(vehicle?.mileage) || 0;
+  const currentMileage = parseInt(vehicle?.mileage, 10) || 0;
 
   return Object.keys(serviceIntervals)
     .filter(key => serviceIntervals[key])
     .map(key => {
-      const interval = parseInt(serviceIntervals[key]);
+      const interval = parseInt(serviceIntervals[key], 10);
       const nextService = getNextServiceMileage(vehicle, key, interval);
       if (nextService === null) return null;
 

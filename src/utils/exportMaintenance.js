@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import logger from './logger';
 
 /**
  * Export maintenance records as CSV
@@ -167,7 +168,7 @@ export async function exportMaintenanceToCSV(vehicle) {
     
     return { success: true, fileUri };
   } catch (error) {
-    console.error('Error exporting CSV:', error);
+    logger.error('Error exporting CSV:', error);
     throw error;
   }
 }
@@ -175,7 +176,7 @@ export async function exportMaintenanceToCSV(vehicle) {
 /**
  * Export maintenance records as PDF
  * @param {Object} vehicle - Vehicle object with maintenance records
- * @param {boolean} includeBuildSheet - Whether to include build sheet in PDF
+ * @param {boolean} includeBuildSheet - Whether to include modifications in PDF
  */
 export async function exportMaintenanceToPDF(vehicle, includeBuildSheet = false) {
   try {
@@ -191,7 +192,7 @@ export async function exportMaintenanceToPDF(vehicle, includeBuildSheet = false)
       return await generateMaintenancePDFMobile(vehicle, includeBuildSheet);
     }
   } catch (error) {
-    console.error('Error exporting PDF:', error);
+    logger.error('Error exporting PDF:', error);
     throw error;
   }
 }

@@ -2,28 +2,30 @@
 // Provides persistent key-value storage for React Native apps
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from './logger';
 
 // In-memory cache for synchronous access during initialization
 const syncGetCache = {};
 let syncGetInitialized = false;
+let initPromise = null;
 
 // Initialize cache from AsyncStorage
 const initializeSyncCache = async () => {
   if (syncGetInitialized) return;
   
   try {
-    const keysToLoad = ['vehicles', 'inventory', 'welcomeCompleted', 'onboardingCompleted', 'notificationsEnabled', 'barcodeCache', 'unitSystem', 'onboardingCompletionTime', 'totalUsageTime', 'lastSessionStart', 'paywallShown', 'userPersona', 'onboardingPhase'];
+    const keysToLoad = ['vehicles', 'inventory', 'welcomeCompleted', 'onboardingCompleted', 'notificationsEnabled', 'barcodeCache', 'unitSystem', 'onboardingCompletionTime', 'totalUsageTime', 'lastSessionStart', 'paywallShown', 'userPersona', 'onboardingPhase', 'specFeedbackOptOut', 'pendingSpecCorrections', 'annualMileage', 'ownershipDuration', 'diyComfort', 'postPurchaseSignInShown', 'subscriberEmail'];
     for (const key of keysToLoad) {
       try {
         const item = await AsyncStorage.getItem(key);
         if (item !== null) {
           // Some keys are stored as plain strings/numbers, not JSON
-          if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase') {
+          if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase' || key === 'annualMileage' || key === 'ownershipDuration' || key === 'diyComfort' || key === 'subscriberEmail') {
             syncGetCache[key] = item;
           } else if (key === 'totalUsageTime') {
             const parsed = parseFloat(item);
             syncGetCache[key] = isNaN(parsed) ? 0 : parsed;
-          } else if (key === 'paywallShown' || key === 'welcomeCompleted') {
+          } else if (key === 'paywallShown' || key === 'welcomeCompleted' || key === 'specFeedbackOptOut' || key === 'postPurchaseSignInShown') {
             syncGetCache[key] = item === 'true';
           } else {
             syncGetCache[key] = JSON.parse(item);
@@ -31,18 +33,18 @@ const initializeSyncCache = async () => {
         }
       } catch (e) {
         // Ignore parse errors
-        console.warn(`Error loading ${key} from cache:`, e);
+        logger.warn(`Error loading ${key} from cache:`, e);
       }
     }
     syncGetInitialized = true;
   } catch (error) {
-    console.error('Error initializing sync cache:', error);
+    logger.error('Error initializing sync cache:', error);
     syncGetInitialized = true;
   }
 };
 
-// Initialize cache on load
-initializeSyncCache();
+// Initialize cache on load and store the promise so readers can await it
+initPromise = initializeSyncCache();
 
 // Estimate storage size (approximate)
 export const getStorageSize = async () => {
@@ -61,7 +63,7 @@ export const getStorageSize = async () => {
     // Convert to MB
     return (total / (1024 * 1024)).toFixed(2);
   } catch (error) {
-    console.error('Error calculating storage size:', error);
+    logger.error('Error calculating storage size:', error);
     return '0.00';
   }
 };
@@ -80,6 +82,10 @@ export const storage = {
   
   // Asynchronous get (always fresh data)
   getAsync: async (key) => {
+    // Ensure cache initialization is complete before reading
+    if (initPromise) {
+      await initPromise;
+    }
     try {
         const item = await AsyncStorage.getItem(key);
         if (item === null) {
@@ -87,20 +93,20 @@ export const storage = {
         }
         
         // Some keys are stored as plain strings/numbers, not JSON
-        if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase') {
+        if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase' || key === 'annualMileage' || key === 'ownershipDuration' || key === 'diyComfort' || key === 'subscriberEmail') {
           syncGetCache[key] = item;
           return item;
         }
-        
+
         // totalUsageTime is stored as a number
         if (key === 'totalUsageTime') {
           const parsed = parseFloat(item);
           syncGetCache[key] = isNaN(parsed) ? 0 : parsed;
           return syncGetCache[key];
         }
-        
-        // paywallShown and welcomeCompleted are booleans stored as strings
-        if (key === 'paywallShown' || key === 'welcomeCompleted') {
+
+        // paywallShown, welcomeCompleted, specFeedbackOptOut, postPurchaseSignInShown are booleans stored as strings
+        if (key === 'paywallShown' || key === 'welcomeCompleted' || key === 'specFeedbackOptOut' || key === 'postPurchaseSignInShown') {
           const parsed = item === 'true';
           syncGetCache[key] = parsed;
           return parsed;
@@ -111,7 +117,7 @@ export const storage = {
         syncGetCache[key] = parsed;
         return parsed;
     } catch (error) {
-      console.error('Error in getAsync:', error);
+      logger.error('Error in getAsync:', error);
       return null;
     }
   },
@@ -125,11 +131,11 @@ export const storage = {
       // Save to AsyncStorage
       // Some keys are stored as plain strings/numbers, not JSON
       let serialized;
-      if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase') {
+      if (key === 'unitSystem' || key === 'onboardingCompletionTime' || key === 'lastSessionStart' || key === 'userPersona' || key === 'onboardingPhase' || key === 'annualMileage' || key === 'ownershipDuration' || key === 'diyComfort' || key === 'subscriberEmail') {
         serialized = String(value);
       } else if (key === 'totalUsageTime') {
         serialized = String(value); // Store as string representation of number
-      } else if (key === 'paywallShown' || key === 'welcomeCompleted') {
+      } else if (key === 'paywallShown' || key === 'welcomeCompleted' || key === 'specFeedbackOptOut' || key === 'postPurchaseSignInShown') {
         serialized = String(value); // Store boolean as string
       } else {
         serialized = JSON.stringify(value);
@@ -139,12 +145,12 @@ export const storage = {
       // Estimate size for logging
       const sizeMB = (serialized.length / (1024 * 1024)).toFixed(2);
       if (parseFloat(sizeMB) > 5) {
-        console.warn(`Warning: Saving ${sizeMB}MB to AsyncStorage for key "${key}"`);
+        logger.warn(`Warning: Saving ${sizeMB}MB to AsyncStorage for key "${key}"`);
       }
       
       return true;
     } catch (error) {
-      console.error('Error in set:', error);
+      logger.error('Error in set:', error);
       // Remove from cache on error
       delete syncGetCache[key];
       
@@ -153,7 +159,7 @@ export const storage = {
         const currentSize = await getStorageSize();
         const errorMsg = `Storage quota exceeded! Current usage: ${currentSize}MB. ` +
           `Please delete some images or other data to free up space.`;
-        console.error(errorMsg);
+        logger.error(errorMsg);
         // In React Native, we can't use alert directly - would need to use Alert from react-native
         return false;
       }
@@ -171,7 +177,7 @@ export const storage = {
       // Remove from AsyncStorage
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.error('Error in remove:', error);
+      logger.error('Error in remove:', error);
     }
   },
   
@@ -189,7 +195,7 @@ export const storage = {
       // Clear AsyncStorage
       await AsyncStorage.clear();
     } catch (error) {
-      console.error('Error in clear:', error);
+      logger.error('Error in clear:', error);
     }
   }
 };

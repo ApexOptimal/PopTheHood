@@ -4,7 +4,7 @@ import jsPDF from 'jspdf';
 /**
  * Generate a PDF report of vehicle maintenance history
  * @param {Object} vehicle - Vehicle object with maintenance records
- * @param {boolean} includeBuildSheet - Whether to include build sheet in PDF
+ * @param {boolean} includeBuildSheet - Whether to include modifications in PDF
  */
 export function generateMaintenancePDF(vehicle, includeBuildSheet = false) {
   const doc = new jsPDF();
@@ -82,7 +82,7 @@ export function generateMaintenancePDF(vehicle, includeBuildSheet = false) {
     yPosition += 6;
   }
   
-  // Add Build Sheet if requested (after VIN)
+  // Add Modifications if requested (after VIN)
   if (includeBuildSheet && vehicle.buildSheet) {
     const buildSheet = vehicle.buildSheet;
     const buildSheetSections = [];
@@ -99,7 +99,7 @@ export function generateMaintenancePDF(vehicle, includeBuildSheet = false) {
       yPosition += 5;
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Build Sheet', margin, yPosition);
+      doc.text('Modifications', margin, yPosition);
       yPosition += 8;
       
       doc.setFontSize(10);
