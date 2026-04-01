@@ -160,6 +160,9 @@ export async function restoreFromSupabase() {
       };
     });
 
+    // Download images before saving so local paths are persisted
+    await downloadImages(user.id, localVehicles);
+
     // Save to local storage
     await storage.set('vehicles', localVehicles);
 
@@ -168,6 +171,7 @@ export async function restoreFromSupabase() {
         id: item.id,
         name: item.name,
         completed: item.checked,
+        vehicleId: item.vehicle_id || null,
       }));
       await storage.set('shoppingList', localShopping);
     }
@@ -188,9 +192,6 @@ export async function restoreFromSupabase() {
         await storage.set('notificationsEnabled', settings.notifications_enabled);
       }
     }
-
-    // Download images from Supabase storage
-    await downloadImages(user.id, localVehicles);
 
     await storage.set('lastSyncedAt', new Date().toISOString());
     return { success: true };
@@ -214,7 +215,7 @@ async function syncVehicles(userId) {
       make: vehicle.make,
       model: vehicle.model,
       trim: vehicle.trim,
-      mileage: vehicle.mileage ? parseInt(vehicle.mileage, 10) : null,
+      mileage: vehicle.mileage != null && vehicle.mileage !== '' ? parseInt(String(vehicle.mileage), 10) || null : null,
       vin: vehicle.vin,
       license_plate: vehicle.licensePlate,
       nickname: vehicle.nickname,
@@ -230,7 +231,7 @@ async function syncVehicles(userId) {
       parts_skus: vehicle.partsSKUs || {},
       build_sheet: vehicle.buildSheet || {},
       maintenance_history_status: vehicle.maintenanceHistoryStatus,
-      health_score: vehicle.healthScore,
+      health_score: vehicle.healthScore != null && vehicle.healthScore !== '' ? Number(vehicle.healthScore) : null,
       has_check_engine_light: vehicle.hasCheckEngineLight || false,
       mileage_history: vehicle.mileageHistory || [],
       mileage_last_updated: vehicle.mileageLastUpdated,
@@ -249,16 +250,16 @@ async function syncVehicles(userId) {
         id: record.id,
         vehicle_id: vehicle.id,
         user_id: userId,
-        service_type: record.type,
-        date: record.date,
-        mileage: record.mileage ? parseInt(String(record.mileage), 10) : null,
-        cost: record.cost,
+        service_type: record.type || 'Other',
+        date: record.date || null,
+        mileage: record.mileage != null && record.mileage !== '' ? parseInt(String(record.mileage), 10) || null : null,
+        cost: record.cost != null && record.cost !== '' ? Number(record.cost) : null,
         description: record.description,
         notes: record.notes,
         location: record.location,
         is_diy: record.isDIY || false,
-        shop_price: record.shopPrice,
-        diy_parts_cost: record.diyPartsCost,
+        shop_price: record.shopPrice != null && record.shopPrice !== '' ? Number(record.shopPrice) : null,
+        diy_parts_cost: record.diyPartsCost != null && record.diyPartsCost !== '' ? Number(record.diyPartsCost) : null,
         receipt_path: record.receipt?.uri || null,
         auto_deduct: record.autoDeduct !== false,
         created_at: record.createdAt || new Date().toISOString(),
@@ -282,8 +283,9 @@ async function syncShoppingList(userId) {
     const { error } = await supabase.from('shopping_list').upsert({
       id: item.id,
       user_id: userId,
-      name: item.name,
+      name: item.name || 'Untitled',
       checked: item.completed || false,
+      vehicle_id: item.vehicleId || null,
       created_at: item.createdAt || new Date().toISOString(),
     }, { onConflict: 'id' });
 

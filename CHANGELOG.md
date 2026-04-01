@@ -10,6 +10,8 @@ Format: each version lists changes grouped by type.
 ## [Unreleased]
 
 ### Fixed
+- Cloud sync no longer fails when cost, mileage, date, or name fields are empty
+- Restoring from cloud now correctly saves downloaded vehicle images locally
 - Year, make, and model dropdowns in onboarding now scroll properly on Android
 - Year, make, and model picker menus now scroll properly on Android
 - Common items picker in Garage now scrolls properly on Android
