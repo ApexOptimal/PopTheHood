@@ -143,6 +143,11 @@ export default function AccountScreen({ onSignedIn, onSkip }) {
               <Text style={styles.oauthButtonText}>Continue with Apple</Text>
             </TouchableOpacity>
           )}
+          {Platform.OS === 'ios' && (
+            <Text style={styles.crossPlatformHint}>
+              Switching between iPhone and Android? Use Google — it works on both. Apple sign-in is iOS only.
+            </Text>
+          )}
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
@@ -267,6 +272,12 @@ const styles = StyleSheet.create({
   actions: {
     gap: theme.spacing.sm,
     marginTop: theme.spacing.lg,
+  },
+  crossPlatformHint: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
   },
   oauthButton: {
     flexDirection: 'row',

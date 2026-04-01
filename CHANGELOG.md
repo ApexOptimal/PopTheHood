@@ -12,6 +12,7 @@ Format: each version lists changes grouped by type.
 ### Added
 - Garage inventory is now included in cloud backup and restore
 - After signing in on a fresh install, the app offers to restore from an existing cloud backup
+- Cross-platform hint on iOS sign-in screens: use Google if you plan to switch between iPhone and Android
 
 ### Fixed
 - Dashboard action items now sort by miles remaining, so a second car due in 1,500 miles appears before a first car's 30,000-mile service

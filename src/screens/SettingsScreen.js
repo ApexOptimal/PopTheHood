@@ -445,6 +445,11 @@ export default function SettingsScreen({ navigation, appContext }) {
                 <Text style={styles.oauthButtonText}>Continue with Apple</Text>
               </TouchableOpacity>
             )}
+            {Platform.OS === 'ios' && (
+              <Text style={[styles.signInPrompt, { marginTop: theme.spacing.md, marginBottom: 0 }]}>
+                Planning to switch between iPhone and Android? Use Google sign-in — it works on both platforms. Apple sign-in is only available on iOS.
+              </Text>
+            )}
           </View>
         )}
       </View>
