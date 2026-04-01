@@ -9,6 +9,10 @@ Format: each version lists changes grouped by type.
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] - 2026-04-01
+
 ### Added
 - Garage inventory is now included in cloud backup and restore
 - After signing in on a fresh install, the app offers to restore from an existing cloud backup
