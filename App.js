@@ -20,7 +20,7 @@ import * as Sentry from '@sentry/react-native';
 import { initializeRevenueCat } from './src/utils/revenueCat';
 import { useProStatus } from './src/hooks/useProStatus';
 import logger from './src/utils/logger';
-import { scheduleSyncAfterWrite } from './src/utils/sync';
+import { scheduleSyncAfterWrite, getCloudBackupTimestamp, restoreFromSupabase } from './src/utils/sync';
 import { scheduleSpecFeedback } from './src/utils/specFeedback';
 import { getCurrentUser } from './src/utils/supabase';
 import { getEnv } from './src/utils/env';
@@ -1209,6 +1209,19 @@ function App() {
     setOnboardingPhase(phase);
   };
 
+  const reloadFromStorage = async () => {
+    const savedVehicles = await storage.getAsync('vehicles') || [];
+    const savedInventory = await storage.getAsync('inventory') || [];
+    const savedTodos = await storage.getAsync('todos') || [];
+    const savedShoppingList = await storage.getAsync('shoppingList') || [];
+    const savedPersona = await storage.getAsync('userPersona');
+    setVehicles(savedVehicles);
+    setInventory(savedInventory);
+    setTodos(savedTodos);
+    setShoppingList(savedShoppingList);
+    if (savedPersona) setUserPersona(savedPersona);
+  };
+
   const completeOnboarding = async () => {
     await storage.set('onboardingPhase', 'completed');
     await storage.set('onboardingCompleted', true);
@@ -1381,6 +1394,29 @@ function App() {
           {onboardingPhase === 'account' && (
             <AccountScreen
               onSignedIn={async () => {
+                try {
+                  const backupTs = await getCloudBackupTimestamp();
+                  if (backupTs) {
+                    Alert.alert(
+                      'Backup Found',
+                      'We found an existing cloud backup. Would you like to restore your vehicles, maintenance history, and garage inventory?',
+                      [
+                        { text: 'Skip', style: 'cancel', onPress: () => completeOnboarding() },
+                        {
+                          text: 'Restore',
+                          onPress: async () => {
+                            const result = await restoreFromSupabase();
+                            if (result.success) {
+                              await reloadFromStorage();
+                            }
+                            await completeOnboarding();
+                          },
+                        },
+                      ],
+                    );
+                    return;
+                  }
+                } catch (_) { /* no backup or offline, continue */ }
                 await completeOnboarding();
               }}
               onSkip={async () => {

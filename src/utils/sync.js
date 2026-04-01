@@ -44,6 +44,9 @@ export async function syncToSupabase() {
     // Sync vehicles
     results.vehicles = await syncVehicles(user.id);
 
+    // Sync inventory
+    results.inventory = await syncInventory(user.id);
+
     // Sync shopping list
     results.shoppingList = await syncShoppingList(user.id);
 
@@ -88,6 +91,12 @@ export async function restoreFromSupabase() {
       .select('*')
       .eq('user_id', user.id);
     if (sErr) throw sErr;
+
+    const { data: inventory, error: iErr } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_id', user.id);
+    if (iErr) throw iErr;
 
     const { data: shoppingList, error: slErr } = await supabase
       .from('shopping_list')
@@ -174,6 +183,28 @@ export async function restoreFromSupabase() {
         vehicleId: item.vehicle_id || null,
       }));
       await storage.set('shoppingList', localShopping);
+    }
+
+    if (inventory) {
+      const localInventory = inventory.map(item => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity != null ? Number(item.quantity) : 1,
+        unit: item.unit,
+        category: item.category,
+        location: item.location,
+        vehicleIds: item.vehicle_ids || [],
+        alertThreshold: item.alert_threshold != null ? Number(item.alert_threshold) : null,
+        isBorrowed: item.is_borrowed || false,
+        borrowedBy: item.borrowed_by,
+        borrowedDate: item.borrowed_date,
+        returnReminderDate: item.return_reminder_date,
+        borrowedPhoto: item.borrowed_photo,
+        contactPhone: item.contact_phone,
+        contactEmail: item.contact_email,
+        notes: item.notes,
+      }));
+      await storage.set('inventory', localInventory);
     }
 
     if (todos) {
@@ -293,6 +324,38 @@ async function syncShoppingList(userId) {
   }
 
   return { count: localList.length };
+}
+
+async function syncInventory(userId) {
+  const localInventory = await storage.getAsync('inventory') || [];
+
+  for (const item of localInventory) {
+    const { error } = await supabase.from('inventory').upsert({
+      id: item.id,
+      user_id: userId,
+      name: item.name || 'Untitled',
+      quantity: item.quantity != null && item.quantity !== '' ? Number(item.quantity) : 1,
+      unit: item.unit || null,
+      category: item.category || null,
+      location: item.location || null,
+      vehicle_ids: item.vehicleIds || [],
+      alert_threshold: item.alertThreshold != null && item.alertThreshold !== '' ? Number(item.alertThreshold) : null,
+      is_borrowed: item.isBorrowed || false,
+      borrowed_by: item.borrowedBy || null,
+      borrowed_date: item.borrowedDate || null,
+      return_reminder_date: item.returnReminderDate || null,
+      borrowed_photo: item.borrowedPhoto || null,
+      contact_phone: item.contactPhone || null,
+      contact_email: item.contactEmail || null,
+      notes: item.notes || null,
+      created_at: item.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+
+    if (error) logger.error('Inventory sync error:', error.message);
+  }
+
+  return { count: localInventory.length };
 }
 
 async function syncTodos(userId) {
@@ -452,6 +515,9 @@ export async function deleteAllCloudData() {
 
     const { error: vErr } = await supabase.from('vehicles').delete().eq('user_id', userId);
     if (vErr) logger.error('Delete vehicles error:', vErr.message);
+
+    const { error: iErr } = await supabase.from('inventory').delete().eq('user_id', userId);
+    if (iErr) logger.error('Delete inventory error:', iErr.message);
 
     const { error: slErr } = await supabase.from('shopping_list').delete().eq('user_id', userId);
     if (slErr) logger.error('Delete shopping_list error:', slErr.message);

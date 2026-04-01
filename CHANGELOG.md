@@ -9,6 +9,10 @@ Format: each version lists changes grouped by type.
 
 ## [Unreleased]
 
+### Added
+- Garage inventory is now included in cloud backup and restore
+- After signing in on a fresh install, the app offers to restore from an existing cloud backup
+
 ### Fixed
 - Dashboard action items now sort by miles remaining, so a second car due in 1,500 miles appears before a first car's 30,000-mile service
 - Cloud sync no longer fails when cost, mileage, date, or name fields are empty
