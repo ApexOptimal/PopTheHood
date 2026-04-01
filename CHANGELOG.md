@@ -10,6 +10,7 @@ Format: each version lists changes grouped by type.
 ## [Unreleased]
 
 ### Fixed
+- Dashboard action items now sort by miles remaining, so a second car due in 1,500 miles appears before a first car's 30,000-mile service
 - Cloud sync no longer fails when cost, mileage, date, or name fields are empty
 - Restoring from cloud now correctly saves downloaded vehicle images locally
 - Year, make, and model dropdowns in onboarding now scroll properly on Android

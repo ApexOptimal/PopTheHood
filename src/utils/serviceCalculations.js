@@ -133,6 +133,10 @@ export function deriveMaintenanceItems(vehicles, maxItems = 4) {
     });
   });
 
-  items.sort((a, b) => b.urgency - a.urgency);
+  items.sort((a, b) => {
+    // Overdue items first, then by fewest miles remaining
+    if (a.dueInMiles === 0 && b.dueInMiles === 0) return b.urgency - a.urgency;
+    return a.dueInMiles - b.dueInMiles;
+  });
   return items.slice(0, maxItems);
 }
