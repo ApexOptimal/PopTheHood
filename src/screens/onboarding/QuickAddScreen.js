@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -446,30 +445,32 @@ function DropdownSelector({ label, placeholder, value, items, isOpen, onToggle, 
               autoFocus
             />
           )}
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item}
+          <ScrollView
             style={styles.dropdownFlatList}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.dropdownItem, item === value && styles.dropdownItemSelected]}
-                onPress={() => onSelect(item)}
-                accessibilityLabel={item}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.dropdownItemText, item === value && styles.dropdownItemTextSelected]}>
-                  {item}
-                </Text>
-                {item === value && <Ionicons name="checkmark" size={16} color={theme.colors.primary} />}
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
+            nestedScrollEnabled={true}
+          >
+            {filtered.length === 0 ? (
               <View style={styles.dropdownEmpty}>
                 <Text style={styles.dropdownEmptyText}>No results</Text>
               </View>
-            }
-          />
+            ) : (
+              filtered.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[styles.dropdownItem, item === value && styles.dropdownItemSelected]}
+                  onPress={() => onSelect(item)}
+                  accessibilityLabel={item}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.dropdownItemText, item === value && styles.dropdownItemTextSelected]}>
+                    {item}
+                  </Text>
+                  {item === value && <Ionicons name="checkmark" size={16} color={theme.colors.primary} />}
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
         </View>
       )}
     </View>

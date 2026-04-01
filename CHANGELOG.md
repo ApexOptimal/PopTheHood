@@ -10,6 +10,7 @@ Format: each version lists changes grouped by type.
 ## [Unreleased]
 
 ### Fixed
+- Year, make, and model dropdowns in onboarding now scroll properly on Android
 - Year, make, and model picker menus now scroll properly on Android
 - Common items picker in Garage now scrolls properly on Android
 - Diagnostic screen no longer crashes when Pro status changes mid-session
